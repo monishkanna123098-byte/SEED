@@ -1,0 +1,212 @@
+// S.E.E.D. Platform — Prisma Schema
+// DPDPA-2023 compliant. Children's data gated by clinician invite code.
+// Risk tiers: MONITOR | INDETERMINATE | ELEVATED only (LOW deliberately removed)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PARENT
+  CLINICIAN
+  ADMIN
+}
+
+enum SessionType {
+  VIDEO
+  GAME
+  COMBINED
+}
+
+enum SessionStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+// LOW deliberately excluded — system never definitively clears a child.
+// Divergence detection overrides to INDETERMINATE minimum.
+enum RiskTier {
+  MONITOR
+  INDETERMINATE
+  ELEVATED
+}
+
+enum MetricType {
+  GAZE
+  REACTION
+  TOUCH
+  IMITATION
+  ENGAGEMENT
+}
+
+enum ReferralStatus {
+  NONE
+  PENDING
+  SCHEDULED
+  COMPLETE
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String
+  role             UserRole
+  name             String
+  isEmailVerified  Boolean   @default(false)
+  emailVerifyToken String?   @unique
+  passwordResetToken String? @unique
+  passwordResetExpiry DateTime?
+
+  // For PARENT: references their assigned clinician
+  clinicianId      String?
+  clinician        User?     @relation("ClinicianParents", fields: [clinicianId], references: [id])
+  parents          User[]    @relation("ClinicianParents")
+
+  // For CLINICIAN: generated invite codes
+  inviteCodes      InviteCode[]
+
+  children         Child[]   @relation("ParentChildren")
+  assignedChildren Child[]   @relation("ClinicianChildren")
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model InviteCode {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  clinicianId String
+  clinician   User     @relation(fields: [clinicianId], references: [id])
+  usedBy      String?  // parentId once consumed
+  usedAt      DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([code])
+  @@index([clinicianId])
+}
+
+model Child {
+  id           String   @id @default(uuid())
+  name         String
+  dateOfBirth  DateTime
+  gender       String   // 'male' | 'female' | 'other'
+  parentId     String
+  parent       User     @relation("ParentChildren", fields: [parentId], references: [id])
+  clinicianId  String?
+  clinician    User?    @relation("ClinicianChildren", fields: [clinicianId], references: [id])
+
+  sessions     ScreeningSession[]
+  gameSessions GameSession[]
+
+  createdAt    DateTime @default(now())
+
+  @@index([parentId])
+  @@index([clinicianId])
+}
+
+model ScreeningSession {
+  id               String        @id @default(uuid())
+  childId          String
+  child            Child         @relation(fields: [childId], references: [id])
+  sessionType      SessionType
+  status           SessionStatus @default(PENDING)
+
+  // M-CHAT-R/F data
+  mChatScore       Float?
+  mChatRawAnswers  Json?
+
+  // Video analysis
+  videoPath        String?
+  analysisJobId    String?
+
+  // Risk output — LOW is NOT a valid tier in this system
+  riskTier         RiskTier?
+  compositeScore   Float?
+  criterionAScore  Float?        // Social communication domain
+  criterionBScore  Float?        // Restricted/repetitive behaviours domain
+  rawMetrics       Json?
+
+  // Clinical management
+  clinicianNotes   String?
+  clinicianOverride String?
+  referralStatus   ReferralStatus @default(NONE)
+
+  behavioralMetrics BehavioralMetric[]
+  gameSessions      GameSession[]
+
+  createdAt        DateTime @default(now())
+  completedAt      DateTime?
+
+  @@index([childId])
+  @@index([status])
+  @@index([riskTier])
+}
+
+model BehavioralMetric {
+  id              String      @id @default(uuid())
+  sessionId       String
+  session         ScreeningSession @relation(fields: [sessionId], references: [id])
+  metricType      MetricType
+  rawValue        Float
+  normalizedScore Float
+  riskFlagged     Boolean     @default(false)
+  timestamp       DateTime    @default(now())
+  details         Json?
+
+  @@index([sessionId])
+  @@index([metricType])
+}
+
+model GameSession {
+  id                   String            @id @default(uuid())
+  sessionId            String?
+  screeningSession     ScreeningSession? @relation(fields: [sessionId], references: [id])
+  childId              String
+  child                Child             @relation(fields: [childId], references: [id])
+  gameModuleId         String            // 'attention' | 'imitation' | 'social' | 'sensory'
+  ageGroup             String            // '24-36m' | '36-48m' | '48-60m'
+
+  // All raw events from Phaser 3 (taps, latencies, responses, disengagements)
+  events               Json
+
+  completionRate       Float
+  disengagementCount   Int               @default(0)
+  touchPrecisionScore  Float
+  reactionLatencyMean  Float
+  imitationAccuracy    Float
+  rigidityScore        Float             // proportion of trials with identical response pattern
+
+  createdAt            DateTime          @default(now())
+
+  @@index([childId])
+  @@index([sessionId])
+  @@index([gameModuleId])
+}
+
+// Indian developmental normative baselines
+// Sources: IAP developmental milestones, WHO Motor Dev Study, 
+// Nair et al. 2014 (Indian paediatric norms), approximate where 
+// peer-reviewed Indian-specific data unavailable (commented inline in seed)
+model NormativeBaseline {
+  id              String   @id @default(uuid())
+  ageGroupMonths  Int      // 24, 30, 36, 42, 48, 54, 60
+  metricType      String
+  meanValue       Float
+  stdDev          Float
+  source          String
+  updatedAt       DateTime @updatedAt
+
+  @@unique([ageGroupMonths, metricType])
+  @@index([ageGroupMonths])
+}

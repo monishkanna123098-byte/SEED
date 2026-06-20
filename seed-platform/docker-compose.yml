@@ -1,0 +1,109 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: seed_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: seed_user
+      POSTGRES_PASSWORD: seed_pass_dev
+      POSTGRES_DB: seed_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U seed_user -d seed_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: seed_redis
+    restart: unless-stopped
+    command: redis-server --requirepass seed_redis_dev
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'seed_redis_dev', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: seed_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://seed_user:seed_pass_dev@postgres:5432/seed_db
+      REDIS_URL: redis://:seed_redis_dev@redis:6379
+      JWT_SECRET: seed_jwt_secret_change_in_production_min_32_chars
+      JWT_REFRESH_SECRET: seed_refresh_secret_change_in_production_min_32_chars
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      ANALYSIS_ENGINE_URL: http://analysis-engine:8001
+      NODE_ENV: development
+      PORT: 3001
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - uploads_data:/app/uploads
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: seed_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_SOCKET_URL: http://localhost:3001
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+
+  analysis-engine:
+    build:
+      context: ./analysis-engine
+      dockerfile: Dockerfile
+    container_name: seed_analysis
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: '1'
+      MODEL_PATH: /app/models
+      LOG_LEVEL: INFO
+    ports:
+      - '8001:8001'
+    volumes:
+      - ./analysis-engine:/app
+      - uploads_data:/uploads:ro
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8001/health']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
