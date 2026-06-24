@@ -20,7 +20,9 @@ import { api } from '@/utils/api'
 import { BehavioralAnalysis } from './tabs/BehavioralAnalysis'
 import { MChatDetails }       from './tabs/MChatDetails'
 import { GameData as GameDataTab } from './tabs/GameData'
-import { TabPlaceholder }     from './tabs/TabPlaceholder'
+import { AISummary }          from './tabs/AISummary'
+import { TrajectoryTab }      from './tabs/TrajectoryTab'
+import { ReviewPanel }        from './ReviewPanel'
 
 // ─── Shared data types (imported by tab components) ───────────────────────────
 
@@ -52,16 +54,18 @@ export interface SessionDetail {
     gender:      string
   }
   session: {
-    type:            string
-    createdAt:       string
-    riskTier:        string
-    compositeScore:  number
-    criterionAScore: number
-    criterionBScore: number
+    type:              string
+    createdAt:         string
+    riskTier:          string
+    compositeScore:    number
+    criterionAScore:   number
+    criterionBScore:   number
     /** 0–1 from analysis engine confidence field */
-    confidence:      number
-    divergenceFlag:  boolean
+    confidence:        number
+    divergenceFlag:    boolean
     divergencePercent?: number
+    /** Pre-built recommended action string from fusion engine */
+    recommendedAction?: string
   }
   metrics: {
     gaze:       GazeMetric
@@ -76,6 +80,15 @@ export interface SessionDetail {
   mchatData?: MChatData
   /** Buddy's World game metrics for Tab 3 (present only when session includes game) */
   gameData?: GameData
+  /** Historical sessions for this child — used by the Trajectory tab */
+  childHistory?: Array<{
+    sessionId:      string
+    createdAt:      string
+    compositeScore: number
+    riskTier:       string
+  }>
+  /** Persisted clinician notes (pre-filled into the review panel) */
+  clinicianNotes?: string
 }
 
 // ─── M-CHAT-R tab types ────────────────────────────────────────────────────────
@@ -209,15 +222,16 @@ const MOCK_ELEVATED: SessionDetail = {
     gender:      'MALE',
   },
   session: {
-    type:            'COMBINED',
-    createdAt:       '2025-06-10T09:00:00Z',
-    riskTier:        'ELEVATED',
-    compositeScore:  41,
-    criterionAScore: 22,
-    criterionBScore: 19,
-    confidence:      0.88,
-    divergenceFlag:  true,
+    type:              'COMBINED',
+    createdAt:         '2025-06-10T09:00:00Z',
+    riskTier:          'ELEVATED',
+    compositeScore:    41,
+    criterionAScore:   22,
+    criterionBScore:   19,
+    confidence:        0.88,
+    divergenceFlag:    true,
     divergencePercent: 34,
+    recommendedAction: 'Refer for specialist evaluation. Consultation should be scheduled within 2 weeks. Parent has been informed of the findings.',
   },
   metrics: {
     gaze:       { score: 7.2, zscore: 2.1, flag: true,  norm: 3.1, gazePct: 31 },
@@ -241,6 +255,35 @@ const MOCK_ELEVATED: SessionDetail = {
   },
   mchatData: MOCK_MCHAT,
   gameData:  MOCK_GAME,
+  // ── Historical sessions for Trajectory tab (4 prior + current = 5 points) ─
+  childHistory: [
+    {
+      sessionId:      'session-h1',
+      createdAt:      '2024-09-18T10:00:00Z',
+      compositeScore: 16,
+      riskTier:       'MONITOR',
+    },
+    {
+      sessionId:      'session-h2',
+      createdAt:      '2024-12-05T09:30:00Z',
+      compositeScore: 27,
+      riskTier:       'INDETERMINATE',
+    },
+    {
+      sessionId:      'session-h3',
+      createdAt:      '2025-02-28T11:00:00Z',
+      compositeScore: 33,
+      riskTier:       'INDETERMINATE',
+    },
+    {
+      sessionId:      'session-h4',
+      createdAt:      '2025-04-15T09:00:00Z',
+      compositeScore: 38,
+      riskTier:       'ELEVATED',
+    },
+    // Current session (session-c1, 2025-06-10, score 41) is merged in TrajectoryTab
+  ],
+  clinicianNotes: '',
 }
 
 // ─── Confidence badge ─────────────────────────────────────────────────────────
@@ -427,13 +470,16 @@ export function SessionDetailPage() {
       <SessionHeader detail={detail} />
       <TabBar active={activeTab} onChange={setActiveTab} />
 
-      <div className="p-6 max-w-5xl">
+      {/* pb-44 keeps content clear of the fixed ReviewPanel */}
+      <div className="p-6 max-w-5xl pb-44">
         {activeTab === 'behavioral' && <BehavioralAnalysis detail={detail} />}
         {activeTab === 'mchat'      && <MChatDetails data={detail.mchatData} />}
         {activeTab === 'game'       && <GameDataTab data={detail.gameData} sessionType={detail.session.type} />}
-        {activeTab === 'summary'    && <TabPlaceholder tabName="AI Summary"  icon="🤖" description="Template-generated clinical summary using metric values." />}
-        {activeTab === 'trajectory' && <TabPlaceholder tabName="Trajectory"  icon="📈" description="Composite score over time for this child." />}
+        {activeTab === 'summary'    && <AISummary detail={detail} />}
+        {activeTab === 'trajectory' && <TrajectoryTab detail={detail} />}
       </div>
+
+      <ReviewPanel detail={detail} sessionId={sessionId ?? ''} />
     </motion.div>
   )
 }
