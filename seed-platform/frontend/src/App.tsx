@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAuthStore } from '@/stores/authStore'
 import { ProtectedRoute } from '@/components/RouteGuards'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -41,6 +42,49 @@ const ClinicianDashboard = React.lazy(() =>
 const SessionDetailPage = React.lazy(() =>
   import('@/pages/clinician/SessionDetailPage').then((m) => ({ default: m.SessionDetailPage }))
 )
+const PatientsPage = React.lazy(() =>
+  import('@/pages/clinician/PatientsPage').then((m) => ({ default: m.PatientsPage }))
+)
+const PatientDetailPage = React.lazy(() =>
+  import('@/pages/clinician/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage }))
+)
+const AnalyticsPage = React.lazy(() =>
+  import('@/pages/clinician/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
+)
+const InviteCodesPage = React.lazy(() =>
+  import('@/pages/clinician/InviteCodesPage').then((m) => ({ default: m.InviteCodesPage }))
+)
+
+// Admin interface
+const AdminLayout = React.lazy(() =>
+  import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout }))
+)
+const AdminDashboard = React.lazy(() =>
+  import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+)
+const AdminUsersPage = React.lazy(() =>
+  import('@/pages/admin/UsersPage').then((m) => ({ default: m.UsersPage }))
+)
+const AdminCliniciansPage = React.lazy(() =>
+  import('@/pages/admin/CliniciansPage').then((m) => ({ default: m.CliniciansPage }))
+)
+const AdminClinicianDetailPage = React.lazy(() =>
+  import('@/pages/admin/ClinicianDetailPage').then((m) => ({ default: m.ClinicianDetailPage }))
+)
+const AdminAnalyticsPage = React.lazy(() =>
+  import('@/pages/admin/AdminAnalyticsPage').then((m) => ({ default: m.AdminAnalyticsPage }))
+)
+const SystemHealthPage = React.lazy(() =>
+  import('@/pages/admin/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage }))
+)
+const ExportPage = React.lazy(() =>
+  import('@/pages/admin/ExportPage').then((m) => ({ default: m.ExportPage }))
+)
+
+// Public landing page
+const LandingPage = React.lazy(() =>
+  import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage }))
+)
 
 const Spinner = (
   <div className="min-h-screen bg-seed-ice flex items-center justify-center">
@@ -49,11 +93,24 @@ const Spinner = (
 )
 
 function AppRoutes() {
-  const { user } = useAuthStore()
+  const { user }   = useAuthStore()
+  const location   = useLocation()
+  // Key on top-level segment so transitions fire between /login → /parent etc.
+  // but NOT between /parent/dashboard and /parent/history (same layout, no flash).
+  const routeKey   = location.pathname.split('/')[1] || 'root'
 
   return (
-    <React.Suspense fallback={Spinner}>
-      <Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={routeKey}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18, ease: 'easeInOut' }}
+        style={{ minHeight: '100vh' }}
+      >
+        <React.Suspense fallback={Spinner}>
+          <Routes location={location}>
         {/* Public auth routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -87,9 +144,32 @@ function AppRoutes() {
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<ClinicianDashboard />} />
+          <Route path="dashboard"          element={<ClinicianDashboard />} />
           <Route path="session/:sessionId" element={<SessionDetailPage />} />
-          {/* Patients, analytics, override panel added in Stage 4C */}
+          <Route path="patients"           element={<PatientsPage />} />
+          <Route path="patients/:childId"  element={<PatientDetailPage />} />
+          <Route path="analytics"          element={<AnalyticsPage />} />
+          <Route path="invite-codes"       element={<InviteCodesPage />} />
+          {/* pending, profile added in later stages */}
+        </Route>
+
+        {/* Admin interface (role = ADMIN) */}
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard"               element={<AdminDashboard />} />
+          <Route path="users"                   element={<AdminUsersPage />} />
+          <Route path="clinicians"              element={<AdminCliniciansPage />} />
+          <Route path="clinicians/:clinicianId" element={<AdminClinicianDetailPage />} />
+          <Route path="analytics"               element={<AdminAnalyticsPage />} />
+          <Route path="system"                  element={<SystemHealthPage />} />
+          <Route path="export"                  element={<ExportPage />} />
         </Route>
 
         {/* Legacy /dashboard route — role-specific content handled inside */}
@@ -102,11 +182,11 @@ function AppRoutes() {
           }
         />
 
-        {/* Root redirect */}
+        {/* Root: landing page for guests, dashboard for authenticated users */}
         <Route
           path="/"
           element={
-            user ? <Navigate to="/parent/dashboard" replace /> : <Navigate to="/login" replace />
+            user ? <Navigate to="/parent/dashboard" replace /> : <LandingPage />
           }
         />
 
@@ -127,7 +207,9 @@ function AppRoutes() {
           }
         />
       </Routes>
-    </React.Suspense>
+        </React.Suspense>
+      </motion.div>
+    </AnimatePresence>
   )
 }
 

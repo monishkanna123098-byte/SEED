@@ -33,15 +33,17 @@
 
   .seed-btn-primary {
     @apply bg-seed-teal text-white font-semibold px-6 py-3 rounded-xl 
-           hover:bg-seed-navy transition-colors duration-200 
-           disabled:opacity-50 disabled:cursor-not-allowed
+           hover:bg-seed-navy transition-all duration-200 
+           hover:scale-[1.02] active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
            focus-visible:ring-2 focus-visible:ring-seed-teal focus-visible:ring-offset-2;
   }
 
   .seed-btn-secondary {
     @apply bg-seed-ice text-seed-navy font-semibold px-6 py-3 rounded-xl 
-           border border-seed-teal/20 hover:bg-seed-teal/10 transition-colors duration-200
-           disabled:opacity-50 disabled:cursor-not-allowed;
+           border border-seed-teal/20 hover:bg-seed-teal/10 transition-all duration-200
+           hover:scale-[1.02] active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
   }
 
   .seed-input {
@@ -76,6 +78,12 @@
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+}
+
+/* Buddy float animation (landing page) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
 }
 
 /* Phaser canvas container */
