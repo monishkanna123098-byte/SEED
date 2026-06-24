@@ -2,9 +2,9 @@
  * TrajectoryChart — composite score over time for one child.
  *
  * Colored reference bands:
- *   0–20   green  (Monitor Closely)
- *   20–35  amber  (Indeterminate)
- *   35–70  red    (Elevated)
+ *   0–23   green  (Monitor Closely)
+ *   24–46  amber  (Indeterminate)
+ *   47–70  red    (Elevated)
  *
  * Uses Recharts: ReferenceArea, LineChart, Line, XAxis, YAxis, Tooltip.
  */
@@ -28,7 +28,7 @@ interface ChartPoint {
   date: string
   dateLabel: string
   score: number
-  tier: RiskTier | 'MONITOR_CLOSELY' | null
+  tier: RiskTier | null
 }
 
 interface TrajectoryChartProps {
@@ -39,7 +39,6 @@ interface TrajectoryChartProps {
 
 const tierLabel: Record<string, string> = {
   MONITOR: 'Typical Development',
-  MONITOR_CLOSELY: 'Typical Development',
   INDETERMINATE: 'Discuss with Clinician',
   ELEVATED: 'Specialist Recommended',
 }
@@ -77,7 +76,6 @@ function CustomTooltip({
 
 const DOT_COLORS: Record<string, string> = {
   MONITOR: '#10b981',
-  MONITOR_CLOSELY: '#10b981',
   INDETERMINATE: '#f59e0b',
   ELEVATED: '#ef4444',
 }
@@ -145,9 +143,9 @@ export const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ sessions }) =>
       {/* Zone legend */}
       <div className="flex items-center gap-4 mb-3 flex-wrap">
         {[
-          { color: 'bg-emerald-200', label: '0–20 Typical' },
-          { color: 'bg-amber-200', label: '20–35 Watch' },
-          { color: 'bg-red-200', label: '35+ Elevated' },
+          { color: 'bg-emerald-200', label: '0–23 Typical' },
+          { color: 'bg-amber-200', label: '24–46 Watch' },
+          { color: 'bg-red-200', label: '47+ Elevated' },
         ].map(({ color, label }) => (
           <span key={label} className="flex items-center gap-1.5 text-xs text-seed-muted">
             <span className={`inline-block w-3 h-3 rounded-sm ${color}`} />
@@ -159,9 +157,9 @@ export const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ sessions }) =>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           {/* Reference bands (rendered behind everything) */}
-          <ReferenceArea y1={0} y2={20} fill="#dcfce7" fillOpacity={0.7} />
-          <ReferenceArea y1={20} y2={35} fill="#fef9c3" fillOpacity={0.7} />
-          <ReferenceArea y1={35} y2={70} fill="#fee2e2" fillOpacity={0.7} />
+          <ReferenceArea y1={0} y2={23} fill="#dcfce7" fillOpacity={0.7} />
+          <ReferenceArea y1={23} y2={46} fill="#fef9c3" fillOpacity={0.7} />
+          <ReferenceArea y1={46} y2={70} fill="#fee2e2" fillOpacity={0.7} />
 
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
 
@@ -176,7 +174,7 @@ export const TrajectoryChart: React.FC<TrajectoryChartProps> = ({ sessions }) =>
             tick={{ fontSize: 11, fill: '#64748b' }}
             axisLine={false}
             tickLine={false}
-            ticks={[0, 20, 35, 70]}
+            ticks={[0, 23, 46, 70]}
           />
 
           <Tooltip content={<CustomTooltip />} />

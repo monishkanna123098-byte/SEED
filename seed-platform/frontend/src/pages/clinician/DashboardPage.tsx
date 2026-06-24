@@ -57,7 +57,7 @@ function StatCard({ label, value, icon, accent, loading }: StatCardProps) {
 // ─── Tier sort weight ─────────────────────────────────────────────────────────
 
 const TIER_WEIGHT: Record<string, number> = {
-  ELEVATED: 3, INDETERMINATE: 2, MONITOR: 1, MONITOR_CLOSELY: 1,
+  ELEVATED: 3, INDETERMINATE: 2, MONITOR: 1,
 }
 
 // ─── Divergence flag tooltip ──────────────────────────────────────────────────

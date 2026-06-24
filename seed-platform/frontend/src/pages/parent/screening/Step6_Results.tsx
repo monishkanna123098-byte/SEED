@@ -23,7 +23,7 @@ import { WizardState } from './NewScreeningPage'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type DisplayTier = 'MONITOR' | 'MONITOR_CLOSELY' | 'INDETERMINATE' | 'ELEVATED' | string
+type DisplayTier = 'MONITOR' | 'INDETERMINATE' | 'ELEVATED'
 
 interface MetricScores {
   gaze:       number   // 0–10, higher = more concern
@@ -70,15 +70,6 @@ interface TierConfig {
 }
 
 const TIER_CONFIG: Record<string, TierConfig> = {
-  MONITOR_CLOSELY: {
-    title:    'Development Looks Typical',
-    body:     'Your child\'s responses are within expected ranges. Continue monthly check-ins and contact your pediatrician if you have any concerns.',
-    bg:       'bg-emerald-50',
-    border:   'border-emerald-200',
-    titleCls: 'text-emerald-800',
-    bodyCls:  'text-emerald-700',
-    dotCls:   'bg-emerald-500',
-  },
   MONITOR: {
     title:    'Development Looks Typical',
     body:     'Your child\'s responses are within expected ranges. Continue monthly check-ins and contact your pediatrician if you have any concerns.',
@@ -312,7 +303,7 @@ export function Step6_Results({ state }: Step6Props) {
       .then(({ data }) => {
         const s = data.session
         setResults({
-          riskTier:       s.riskTier       ?? 'INDETERMINATE',
+          riskTier:       (s.riskTier ?? 'INDETERMINATE') as DisplayTier,
           compositeScore: s.compositeScore ?? 0,
           sessionType:    s.sessionType    ?? state.modality ?? 'COMBINED',
           createdAt:      s.createdAt      ?? new Date().toISOString(),

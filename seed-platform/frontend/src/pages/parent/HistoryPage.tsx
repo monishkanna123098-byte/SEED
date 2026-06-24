@@ -21,7 +21,7 @@ import { motion } from 'framer-motion'
 import { useParentStore } from '@/stores/parentStore'
 import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 import { formatDate, durationMinutes } from '@/utils/age'
-import { ScreeningSession, RiskTier } from '@/types'
+import { ScreeningSession } from '@/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ const STATUS_CONFIG: Record<string, { label: string; dotCls: string; textCls: st
 
 // Tier sort weight (higher = more severe)
 const TIER_WEIGHT: Record<string, number> = {
-  MONITOR_CLOSELY: 1, MONITOR: 1, INDETERMINATE: 2, ELEVATED: 3,
+  MONITOR: 1, INDETERMINATE: 2, ELEVATED: 3,
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -205,9 +205,7 @@ export function HistoryPage() {
     const filtered = forChild.filter((s) => {
       if (!inDateRange(s.createdAt, filter.dateFrom, filter.dateTo)) return false
       if (filter.tier) {
-        const match = s.riskTier === filter.tier ||
-          (filter.tier === 'MONITOR' && s.riskTier === 'MONITOR_CLOSELY' as RiskTier)
-        if (!match) return false
+        if (s.riskTier !== filter.tier) return false
       }
       if (filter.modality && s.sessionType !== filter.modality) return false
       return true
@@ -492,7 +490,7 @@ export function HistoryPage() {
                       <td className="px-4 py-3.5 text-right">
                         {session.status === 'COMPLETE' ? (
                           <Link
-                            to={`/parent/sessions/${session.id}`}
+                            to={`/clinician/session/${session.id}`}
                             className="text-xs font-medium text-seed-teal hover:text-seed-navy
                                        underline underline-offset-2 transition-colors"
                           >

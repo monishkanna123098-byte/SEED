@@ -8,8 +8,8 @@
 import React from 'react'
 import { RiskTier } from '@/types'
 
-// Handles both MONITOR (Prisma enum) and MONITOR_CLOSELY (analysis engine)
-export type DisplayTier = RiskTier | 'MONITOR_CLOSELY' | null | undefined
+// Display type matches the canonical RiskTier enum
+export type DisplayTier = RiskTier | null | undefined
 
 interface BadgeConfig {
   label: string
@@ -19,12 +19,6 @@ interface BadgeConfig {
 }
 
 const CONFIG: Record<string, BadgeConfig> = {
-  MONITOR_CLOSELY: {
-    label: 'Typical Development',
-    colorClass: 'text-emerald-800',
-    bgClass: 'bg-emerald-100',
-    dotColor: 'bg-emerald-500',
-  },
   MONITOR: {
     label: 'Typical Development',
     colorClass: 'text-emerald-800',

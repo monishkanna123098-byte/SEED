@@ -13,6 +13,7 @@
 
 import { create } from 'zustand'
 import { formatDate } from '@/utils/age'
+import { RiskTier } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ export interface PendingReview {
   childName: string
   childAgeMonths: number
   screeningDate: string
-  riskTier: 'ELEVATED' | 'INDETERMINATE' | 'MONITOR' | 'MONITOR_CLOSELY'
+  riskTier: RiskTier
   compositeScore: number
   /** When true: parent-report and behavioral CV data diverge > threshold */
   divergenceFlag: boolean
