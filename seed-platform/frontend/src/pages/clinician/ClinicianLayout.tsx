@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useClinicianStore } from '@/stores/clinicianStore'
+import { NotificationBell } from '@/components/NotificationBell'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -210,7 +211,6 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
 
 function TopBar({ sidebarWidth }: { sidebarWidth: number }) {
   const { user } = useAuthStore()
-  const { pending } = useClinicianStore()
 
   return (
     <header
@@ -228,20 +228,8 @@ function TopBar({ sidebarWidth }: { sidebarWidth: number }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          className="relative p-2 rounded-lg text-seed-muted hover:text-seed-dark
-                     hover:bg-seed-ice transition-colors"
-          aria-label="Notifications"
-        >
-          <Icon name="bell" />
-          {pending.length > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full
-                              bg-seed-alert text-white text-[9px] font-bold
-                              flex items-center justify-center">
-              {pending.length > 9 ? '9+' : pending.length}
-            </span>
-          )}
-        </button>
+        {/* NotificationBell fetches /api/notifications and manages its own state */}
+        {user && <NotificationBell role={user.role as 'PARENT' | 'CLINICIAN' | 'ADMIN'} />}
 
         {user && (
           <div className="w-8 h-8 rounded-full bg-seed-navy text-white text-xs

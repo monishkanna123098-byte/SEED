@@ -8,9 +8,11 @@ import morgan from 'morgan'
 import rateLimit from 'express-rate-limit'
 import { Server as SocketIOServer } from 'socket.io'
 import { logger } from './utils/logger'
+import { prisma } from './utils/prisma'
 import authRoutes from './routes/auth.routes'
 import screeningRoutes from './routes/screening.routes'
 import clinicianRoutes from './routes/clinician.routes'
+import notificationRoutes from './routes/notification.routes'
 
 const app = express()
 const httpServer = http.createServer(app)
@@ -28,11 +30,46 @@ export const io = new SocketIOServer(httpServer, {
 io.on('connection', (socket) => {
   logger.debug('Socket connected', { socketId: socket.id })
 
-  // Client subscribes to job updates for a specific analysis job
+  // ── join-session: client sends sessionId → backend looks up jobId → joins room ──
+  //
+  // The frontend emits 'join-session' with a sessionId (which it always has).
+  // The backend maps sessionId → analysisJobId from the DB, then adds the socket
+  // to the 'job:{jobId}' room that analysisService.ts emits to.
+  //
+  // This resolves the channel mismatch: frontend had no way to know the jobId
+  // before the upload response, and even then, Step5 doesn't pass it through
+  // the wizard state. Using sessionId as the join key is the correct design.
+  socket.on('join-session', async (sessionId: string) => {
+    if (typeof sessionId !== 'string' || sessionId.length > 100) return
+
+    try {
+      const session = await prisma.screeningSession.findUnique({
+        where: { id: sessionId },
+        select: { analysisJobId: true },
+      })
+
+      if (session?.analysisJobId) {
+        const room = `job:${session.analysisJobId}`
+        socket.join(room)
+        logger.debug('Socket joined job room via session', {
+          socketId: socket.id, sessionId, room,
+        })
+      } else {
+        // Session exists but no job yet (race condition) — join session room directly.
+        // analysisService will also emit to 'session:{sessionId}' as a fallback.
+        socket.join(`session:${sessionId}`)
+        logger.debug('Socket joined session room (no job yet)', { socketId: socket.id, sessionId })
+      }
+    } catch (err) {
+      logger.warn('join-session lookup failed', { socketId: socket.id, sessionId, error: err })
+    }
+  })
+
+  // Legacy: direct job subscription (kept for internal tools/testing)
   socket.on('subscribe:job', (jobId: string) => {
     if (typeof jobId === 'string' && jobId.length < 100) {
       socket.join(`job:${jobId}`)
-      logger.debug('Socket subscribed to job', { socketId: socket.id, jobId })
+      logger.debug('Socket subscribed to job directly', { socketId: socket.id, jobId })
     }
   })
 
@@ -42,17 +79,16 @@ io.on('connection', (socket) => {
 })
 
 // ─── Security & Core Middleware ────────────────────────────────────────────
-// helmet() adds HTTP security headers.
-// CSP is intentionally omitted — it applies to HTML document responses only,
-// not JSON API responses. Applying CSP here has no effect and misleads auditors.
-// crossOriginResourcePolicy: 'cross-origin' — required because the frontend
-// (Vite :5173 / CDN) is served from a different origin than this API (:3001).
-// The default 'require-corp' would block cross-origin fetch in strict environments.
-// crossOriginEmbedderPolicy: false — required for Socket.io polling transport.
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:'],
+    },
+  },
 }))
 
 app.use(cors({
@@ -83,11 +119,9 @@ const globalLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again later.' },
 })
 
-// Login is limited to 5 attempts per IP per 15-minute window.
-// Applies to /api/auth/login and /api/auth/register — see wiring below.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 10, // Strict limit on auth endpoints
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts. Please wait 15 minutes.' },
@@ -102,6 +136,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/clinician', authRoutes)
 app.use('/api/clinician', clinicianRoutes)
 app.use('/api/screening', screeningRoutes)
+app.use('/api/notifications', notificationRoutes)
 
 // Health check — used by Docker and analysis engine
 app.get('/health', (_req, res) => {

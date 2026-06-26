@@ -19,6 +19,8 @@ import { useParentStore, selectChild } from '@/stores/parentStore'
 import { calculateAge } from '@/utils/age'
 import { api } from '@/utils/api'
 import { Child } from '@/types'
+import { NotificationBell } from '@/components/NotificationBell'
+import { useAuthStore } from '@/stores/authStore'
 
 // ─── Icons (inline SVG, no external lib needed) ──────────────────────────────
 
@@ -237,9 +239,9 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
 // ─── Top bar ─────────────────────────────────────────────────────────────────
 
 function TopBar({ sidebarWidth }: { sidebarWidth: number }) {
-  const { unreadNotifications } = useParentStore()
   const child = useParentStore(selectChild)
   const age = child ? calculateAge(child.dateOfBirth) : null
+  const { user } = useAuthStore()
 
   return (
     <header
@@ -259,17 +261,8 @@ function TopBar({ sidebarWidth }: { sidebarWidth: number }) {
         )}
       </div>
 
-      <button
-        className="relative p-2 rounded-lg text-seed-muted hover:text-seed-dark hover:bg-seed-ice transition-colors"
-        aria-label={`Notifications ${unreadNotifications > 0 ? `(${unreadNotifications} unread)` : ''}`}
-      >
-        <Icon name="bell" />
-        {unreadNotifications > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-seed-alert text-white text-[9px] font-bold flex items-center justify-center">
-            {unreadNotifications}
-          </span>
-        )}
-      </button>
+      {/* NotificationBell fetches /api/notifications and manages its own state */}
+      {user && <NotificationBell role={user.role as 'PARENT' | 'CLINICIAN' | 'ADMIN'} />}
     </header>
   )
 }

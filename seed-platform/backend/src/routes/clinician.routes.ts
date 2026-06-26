@@ -8,19 +8,16 @@
  * PATCH /api/clinician/sessions/:id/referral — update referral status
  * POST  /api/clinician/invite-code       — generate invite code (re-exported here)
  * GET   /api/clinician/invite-codes      — list own invite codes
- *
- * SQL INJECTION AUDIT (2025-07-01):
- * All DB operations use Prisma ORM methods exclusively (findMany, findFirst,
- * update). Prisma parameterizes every query by default. No raw $queryRaw or
- * $executeRaw calls exist in this file. getSessionForClinician() uses a WHERE
- * clause with two parameterized fields (id, child.clinicianId) — no string
- * interpolation. Last audited: Stage 5A security hardening.
  */
 
 import { Router, Request, Response } from 'express'
 import { body, param } from 'express-validator'
 import { UserRole, ReferralStatus, SessionStatus } from '@prisma/client'
 import { prisma } from '../utils/prisma'
+import {
+  createReviewRequiredNotification,
+  createReferralScheduledNotification,
+} from '../services/analysisService'
 import { authenticateToken, requireRole } from '../middleware/auth.middleware'
 import { validate } from '../middleware/validate.middleware'
 import { logger } from '../utils/logger'
@@ -126,15 +123,27 @@ router.post(
         return
       }
 
-      await prisma.screeningSession.update({
+      const noted = await prisma.screeningSession.update({
         where: { id: req.params.id },
         data: { clinicianNotes: notes },
+        include: { child: { select: { name: true, clinicianId: true } } },
       })
 
+      // Notify clinician that they are now actively reviewing this session
+      if (noted.status === 'COMPLETE' && noted.child.clinicianId) {
+        await createReviewRequiredNotification(
+          req.params.id,
+          noted.child.clinicianId,
+          noted.child.name
+        )
+      }
+
       res.json({ sessionId: req.params.id, message: 'Clinical notes saved' })
-    } catch (err) {
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status ?? 500
+      const message = err instanceof Error ? err.message : 'Failed to save notes'
       logger.error('Add notes error', { error: err })
-      res.status(500).json({ error: 'Failed to save notes' })
+      res.status(status).json({ error: message })
     }
   }
 )
@@ -196,9 +205,11 @@ router.post(
         disclaimer:
           'Screening tool only. Not a diagnostic instrument. Clinical confirmation required.',
       })
-    } catch (err) {
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status ?? 500
+      const message = err instanceof Error ? err.message : 'Failed to save override'
       logger.error('Override error', { error: err })
-      res.status(500).json({ error: 'Failed to save override' })
+      res.status(status).json({ error: message })
     }
   }
 )
@@ -222,15 +233,27 @@ router.patch(
         return
       }
 
-      await prisma.screeningSession.update({
+      const updated = await prisma.screeningSession.update({
         where: { id: req.params.id },
         data: { referralStatus },
+        include: { child: { select: { name: true, clinicianId: true } } },
       })
 
+      // Trigger REFERRAL_SCHEDULED notification to the assigned clinician
+      if (referralStatus === 'SCHEDULED' && updated.child.clinicianId) {
+        await createReferralScheduledNotification(
+          req.params.id,
+          updated.child.clinicianId,
+          updated.child.name
+        )
+      }
+
       res.json({ sessionId: req.params.id, referralStatus, message: 'Referral status updated' })
-    } catch (err) {
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status ?? 500
+      const message = err instanceof Error ? err.message : 'Failed to update referral status'
       logger.error('Referral update error', { error: err })
-      res.status(500).json({ error: 'Failed to update referral status' })
+      res.status(status).json({ error: message })
     }
   }
 )

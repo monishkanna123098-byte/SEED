@@ -18,26 +18,17 @@ import path from 'path'
 import { prisma } from '../utils/prisma'
 import { io } from '../app'
 import { logger } from '../utils/logger'
-import { MetricType, ReferralStatus, SessionStatus } from '@prisma/client'
+import { MetricType, SessionStatus } from '@prisma/client'
 
 const ANALYSIS_URL = process.env.ANALYSIS_ENGINE_URL ?? 'http://localhost:8001'
 
 // ─── Bull Queue ───────────────────────────────────────────────────────────────
-//
+
 // Bull requires three independent Redis connections (client, subscriber, bclient).
-// subscriber enters pub/sub mode and bclient issues blocking commands — neither
-// can share a connection. We create a fresh ioredis instance per call from
-// REDIS_URL so all three respect the same env-driven config without interference.
-//
-// Default fallback targets the 'redis' Docker service name on port 6379.
-
+// We create a fresh ioredis instance per call from REDIS_URL.
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://redis:6379'
-
 function makeBullRedis(): Redis {
-  return new Redis(REDIS_URL, {
-    maxRetriesPerRequest: null, // required for Bull blocking clients
-    enableReadyCheck: false,
-  })
+  return new Redis(REDIS_URL, { maxRetriesPerRequest: null, enableReadyCheck: false })
 }
 
 export const analysisQueue = new Bull('seed-analysis', {
@@ -67,41 +58,36 @@ interface GameAnalysisJob {
 
 // ─── Progress emitter ─────────────────────────────────────────────────────────
 
-function emitProgress(
-  sessionId: string,
-  jobId: string,
-  stage: string,
-  progress: number,
-  data?: Record<string, unknown>
-) {
-  io.to(`job:${jobId}`).emit('analysis:progress', {
-    sessionId,
-    jobId,
-    stage,
-    progress,  // 0-100
-    ...data,
-    timestamp: new Date().toISOString(),
-  })
+// Spec-mandated stage strings — frontend maps these to display labels.
+// Valid values: 'extracting_frames' | 'computing_gaze' | 'analyzing_game'
+//             | 'running_model' | 'generating_report'
+type AnalysisStage =
+  | 'extracting_frames'
+  | 'computing_gaze'
+  | 'analyzing_game'
+  | 'running_model'
+  | 'generating_report'
+
+function emitProgress(sessionId: string, jobId: string, stage: AnalysisStage, percent: number) {
+  const payload = { sessionId, stage, percent, timestamp: new Date().toISOString() }
+  // Emit to both rooms: job:{jobId} (normal path) and session:{sessionId} (race condition
+  // fallback where socket joined before the job ID was written to the DB)
+  io.to(`job:${jobId}`).to(`session:${sessionId}`).emit('analysis:progress', payload)
 }
 
-function emitComplete(sessionId: string, jobId: string, result: Record<string, unknown>) {
-  io.to(`job:${jobId}`).emit('analysis:complete', {
-    sessionId,
-    jobId,
-    result,
-    disclaimer:
-      'Screening tool only. Not a diagnostic instrument. Clinical confirmation required.',
-    timestamp: new Date().toISOString(),
-  })
+function emitStarted(sessionId: string, jobId: string) {
+  const payload = { sessionId, jobId, timestamp: new Date().toISOString() }
+  io.to(`job:${jobId}`).to(`session:${sessionId}`).emit('analysis:started', payload)
 }
 
-function emitError(sessionId: string, jobId: string, error: string) {
-  io.to(`job:${jobId}`).emit('analysis:error', {
-    sessionId,
-    jobId,
-    error,
-    timestamp: new Date().toISOString(),
-  })
+function emitComplete(sessionId: string, jobId: string, riskTier: string, score: number) {
+  const payload = { sessionId, riskTier, score, timestamp: new Date().toISOString() }
+  io.to(`job:${jobId}`).to(`session:${sessionId}`).emit('analysis:complete', payload)
+}
+
+function emitFailed(sessionId: string, jobId: string, error: string) {
+  const payload = { sessionId, error, timestamp: new Date().toISOString() }
+  io.to(`job:${jobId}`).to(`session:${sessionId}`).emit('analysis:failed', payload)
 }
 
 // ─── Video upload & queue ─────────────────────────────────────────────────────
@@ -160,7 +146,8 @@ export async function runFusion(
   gameMetrics: Record<string, unknown> | null,
   mChatAnswers: Record<string, boolean> | null,
   mChatScore: number | null,
-  childAgeMonths: number
+  childAgeMonths: number,
+  partial = false
 ): Promise<Record<string, unknown>> {
   logger.info('Running fusion', {
     sessionId,
@@ -180,14 +167,19 @@ export async function runFusion(
   const response = await axios.post(`${ANALYSIS_URL}/analyze/fusion`, payload)
   const fusionResult = response.data as Record<string, unknown>
 
-  // Persist results to database
-  await persistAnalysisResults(sessionId, fusionResult, mChatScore, mChatAnswers)
+  // Persist results to database (partial=true → PARTIAL_ANALYSIS status)
+  await persistAnalysisResults(sessionId, fusionResult, mChatScore, mChatAnswers, partial)
 
   // Emit socket event for real-time update
   const jobId = await getJobIdForSession(sessionId)
   if (jobId) {
-    emitComplete(sessionId, jobId, fusionResult)
+    const riskTier = (fusionResult.final_risk_tier as string) ?? 'INDETERMINATE'
+    const score = (fusionResult.composite_score as number) ?? 0
+    emitComplete(sessionId, jobId, riskTier, score)
   }
+
+  // Create in-app notification for parent
+  await createResultReadyNotification(sessionId)
 
   return fusionResult
 }
@@ -198,7 +190,8 @@ async function persistAnalysisResults(
   sessionId: string,
   fusionResult: Record<string, unknown>,
   mChatScore: number | null,
-  mChatAnswers: Record<string, boolean> | null
+  mChatAnswers: Record<string, boolean> | null,
+  partial = false
 ): Promise<void> {
   const riskTierRaw = (fusionResult.final_risk_tier as string) ?? 'INDETERMINATE'
   const breakdown = fusionResult.per_metric_breakdown as Record<string, unknown> | null
@@ -216,7 +209,7 @@ async function persistAnalysisResults(
   await prisma.screeningSession.update({
     where: { id: sessionId },
     data: {
-      status: SessionStatus.COMPLETE,
+      status: partial ? SessionStatus.PARTIAL_ANALYSIS : SessionStatus.COMPLETE,
       riskTier,
       compositeScore: (fusionResult.composite_score as number) ?? null,
       criterionAScore: (fusionResult.criterion_a as number) ?? null,
@@ -274,6 +267,80 @@ async function persistAnalysisResults(
   logger.info('Analysis results persisted', { sessionId, riskTier })
 }
 
+// ─── In-app notification helpers ─────────────────────────────────────────────
+
+async function createResultReadyNotification(sessionId: string): Promise<void> {
+  try {
+    // Find the parent of the child associated with this session
+    const session = await prisma.screeningSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        riskTier: true,
+        child: { select: { parentId: true, name: true } },
+      },
+    })
+    if (!session?.child?.parentId) return
+
+    const tierLabel =
+      session.riskTier === 'ELEVATED'      ? 'Elevated risk' :
+      session.riskTier === 'INDETERMINATE' ? 'Indeterminate' :
+                                              'Monitor'
+
+    await prisma.notification.create({
+      data: {
+        userId:    session.child.parentId,
+        type:      'RESULT_READY',
+        title:     'Screening result ready',
+        body:      `${session.child.name}'s screening is complete. Result: ${tierLabel}. Your clinician will review shortly.`,
+        sessionId,
+      },
+    })
+  } catch (err) {
+    // Notification failure must never break the analysis pipeline
+    logger.warn('Failed to create RESULT_READY notification', { sessionId, error: err })
+  }
+}
+
+export async function createReviewRequiredNotification(
+  sessionId: string,
+  clinicianId: string,
+  childName: string
+): Promise<void> {
+  try {
+    await prisma.notification.create({
+      data: {
+        userId:    clinicianId,
+        type:      'REVIEW_REQUIRED',
+        title:     'Review required',
+        body:      `${childName}'s screening result is ready and awaiting your clinical review.`,
+        sessionId,
+      },
+    })
+  } catch (err) {
+    logger.warn('Failed to create REVIEW_REQUIRED notification', { sessionId, error: err })
+  }
+}
+
+export async function createReferralScheduledNotification(
+  sessionId: string,
+  clinicianId: string,
+  childName: string
+): Promise<void> {
+  try {
+    await prisma.notification.create({
+      data: {
+        userId:    clinicianId,
+        type:      'REFERRAL_SCHEDULED',
+        title:     'Referral scheduled',
+        body:      `Referral for ${childName} has been scheduled. Review the session for details.`,
+        sessionId,
+      },
+    })
+  } catch (err) {
+    logger.warn('Failed to create REFERRAL_SCHEDULED notification', { sessionId, error: err })
+  }
+}
+
 async function getJobIdForSession(sessionId: string): Promise<string | null> {
   const session = await prisma.screeningSession.findUnique({
     where: { id: sessionId },
@@ -290,9 +357,15 @@ analysisQueue.process('video-analysis', async (job) => {
 
   logger.info('Processing video analysis job', { jobId, sessionId })
 
+  // Emit started event before any work begins
+  emitStarted(sessionId, jobId)
+
+  let videoMetrics: Record<string, unknown> | null = null
+  let videoFailed = false
+
   try {
-    // Stage 1: Send video to FastAPI
-    emitProgress(sessionId, jobId, 'video_processing', 10)
+    // ── Stage 1: extracting_frames ──────────────────────────────────────────
+    emitProgress(sessionId, jobId, 'extracting_frames', 10)
 
     if (!fs.existsSync(videoPath)) {
       throw new Error(`Video file not found: ${videoPath}`)
@@ -309,19 +382,35 @@ analysisQueue.process('video-analysis', async (job) => {
       contentType: 'video/mp4',
     })
 
-    emitProgress(sessionId, jobId, 'extracting_landmarks', 30)
+    // ── Stage 2: computing_gaze ─────────────────────────────────────────────
+    emitProgress(sessionId, jobId, 'computing_gaze', 30)
 
     const videoResponse = await axios.post(`${ANALYSIS_URL}/analyze/video`, form, {
       headers: form.getHeaders(),
-      maxContentLength: 150 * 1024 * 1024, // 150MB
-      maxBodyLength: 150 * 1024 * 1024,
-      timeout: 300_000, // 5 min timeout for long videos
+      maxContentLength: 150 * 1024 * 1024,
+      maxBodyLength:    150 * 1024 * 1024,
+      timeout: 300_000, // 5 min for long videos
     })
 
-    const videoMetrics = videoResponse.data?.raw_metrics as Record<string, unknown>
-    emitProgress(sessionId, jobId, 'computing_features', 60)
+    videoMetrics = videoResponse.data?.raw_metrics as Record<string, unknown>
+    logger.info('Video analysis complete', { sessionId })
+  } catch (videoError) {
+    // ── Graceful degradation: video failed — fall through to game+M-CHAT ───
+    // Do NOT mark session FAILED or re-throw here. Log, flag, continue.
+    const msg = videoError instanceof Error ? videoError.message : String(videoError)
+    logger.warn('Video analysis failed — falling back to game+M-CHAT data only', {
+      jobId, sessionId, error: msg,
+    })
+    videoFailed = true
+    videoMetrics = null
+    // Notify frontend that video stage failed but pipeline continues
+    emitProgress(sessionId, jobId, 'analyzing_game', 40)
+  }
 
-    // Stage 2: Retrieve game session if available
+  try {
+    // ── Stage 3: analyzing_game ─────────────────────────────────────────────
+    if (!videoFailed) emitProgress(sessionId, jobId, 'analyzing_game', 55)
+
     const gameSession = await prisma.gameSession.findFirst({
       where: { sessionId },
       orderBy: { createdAt: 'desc' },
@@ -336,8 +425,8 @@ analysisQueue.process('video-analysis', async (job) => {
       }
     }
 
-    // Stage 3: Fusion
-    emitProgress(sessionId, jobId, 'fusion_scoring', 80)
+    // ── Stage 4: running_model ──────────────────────────────────────────────
+    emitProgress(sessionId, jobId, 'running_model', 75)
 
     const session = await prisma.screeningSession.findUnique({
       where: { id: sessionId },
@@ -350,21 +439,25 @@ analysisQueue.process('video-analysis', async (job) => {
       gameMetrics,
       session?.mChatRawAnswers as Record<string, boolean> | null,
       session?.mChatScore ?? mChatScore ?? null,
-      childAgeMonths
+      childAgeMonths,
+      videoFailed // pass partial flag through to persistAnalysisResults
     )
 
-    emitProgress(sessionId, jobId, 'complete', 100)
-    logger.info('Video analysis job completed', { jobId, sessionId })
+    // ── Stage 5: generating_report ──────────────────────────────────────────
+    emitProgress(sessionId, jobId, 'generating_report', 95)
+
+    logger.info('Video analysis job completed', { jobId, sessionId, partial: videoFailed })
   } catch (error) {
+    // Fatal: game+fusion also failed — mark session FAILED
     const message = error instanceof Error ? error.message : String(error)
-    logger.error('Video analysis job failed', { jobId, sessionId, error: message })
+    logger.error('Analysis pipeline failed entirely', { jobId, sessionId, error: message })
 
     await prisma.screeningSession.update({
       where: { id: sessionId },
       data: { status: SessionStatus.FAILED },
     })
 
-    emitError(sessionId, jobId, message)
+    emitFailed(sessionId, jobId, message)
     throw error  // Re-throw for Bull retry logic
   }
 })

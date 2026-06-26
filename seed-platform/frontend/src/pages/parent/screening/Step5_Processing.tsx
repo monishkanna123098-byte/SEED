@@ -18,7 +18,33 @@ import { io, Socket } from 'socket.io-client'
 import { api } from '@/utils/api'
 import { WizardState, ScreeningModality } from './NewScreeningPage'
 
-// ─── Stage list ───────────────────────────────────────────────────────────────
+// ─── Stage definitions ───────────────────────────────────────────────────────
+// Backend stage string → display label + order index.
+// Must stay in sync with AnalysisStage type in analysisService.ts.
+
+type AnalysisStage =
+  | 'extracting_frames'
+  | 'computing_gaze'
+  | 'analyzing_game'
+  | 'running_model'
+  | 'generating_report'
+
+const STAGE_LABEL: Record<AnalysisStage, string> = {
+  extracting_frames:  'Extracting video frames...',
+  computing_gaze:     'Analyzing gaze patterns...',
+  analyzing_game:     'Processing game responses...',
+  running_model:      'Running analysis model...',
+  generating_report:  'Generating your report...',
+}
+
+// Ordered list for progress display
+const STAGE_ORDER: AnalysisStage[] = [
+  'extracting_frames',
+  'computing_gaze',
+  'analyzing_game',
+  'running_model',
+  'generating_report',
+]
 
 function buildStages(modality: ScreeningModality | null): string[] {
   const stages: string[] = []
@@ -133,14 +159,29 @@ export function Step5_Processing({ state, onNext }: Step5Props) {
       socket.emit('join-session', sessionId)
     })
 
-    socket.on('analysis:progress', (data: { stage?: number }) => {
-      if (typeof data.stage === 'number') {
-        setCurrentStageIdx(Math.min(data.stage, stages.length - 1))
+    socket.on('analysis:started', () => {
+      setCurrentStageIdx(0)
+    })
+
+    socket.on('analysis:progress', (data: { stage?: AnalysisStage; percent?: number }) => {
+      if (data.stage && Object.prototype.hasOwnProperty.call(STAGE_LABEL, data.stage)) {
+        // Map spec stage string to display index
+        const idx = STAGE_ORDER.indexOf(data.stage)
+        if (idx >= 0) setCurrentStageIdx(idx)
       }
     })
 
-    socket.on('analysis:complete', () => advance())
+    socket.on('analysis:complete', (data: { riskTier?: string; score?: number }) => {
+      // Store result payload in wizard state so Step 6 can use it without a re-fetch
+      advance({ riskTierFromSocket: data.riskTier, scoreFromSocket: data.score })
+    })
 
+    // analysis:failed is the spec event name (not analysis:error)
+    socket.on('analysis:failed', (data: { error?: string }) => {
+      setError(data.error ?? 'Analysis failed. Please try again.')
+    })
+
+    // Keep legacy analysis:error listener for backward compatibility during deploy
     socket.on('analysis:error', (data: { error?: string }) => {
       setError(data.error ?? 'Analysis failed. Please try again.')
     })
@@ -165,9 +206,9 @@ export function Step5_Processing({ state, onNext }: Step5Props) {
           `/screening/${sessionId}/status`
         )
         const status = data.session.status
-        if (status === 'COMPLETE' || status === 'FAILED') {
+        if (status === 'COMPLETE' || status === 'PARTIAL_ANALYSIS' || status === 'FAILED') {
           clearInterval(pollRef.current!)
-          if (status === 'COMPLETE') advance()
+          if (status === 'COMPLETE' || status === 'PARTIAL_ANALYSIS') advance()
           else setError('Analysis failed. Please return to the dashboard.')
         }
       } catch { /* network error in poll — keep trying */ }
