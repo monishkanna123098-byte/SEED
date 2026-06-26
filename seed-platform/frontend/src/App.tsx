@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuthStore } from '@/stores/authStore'
-import { ProtectedRoute } from '@/components/RouteGuards'
+import { ProtectedRoute, RoleRoute, ROLE_HOME } from '@/components/RouteGuards'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
@@ -81,9 +81,15 @@ const ExportPage = React.lazy(() =>
   import('@/pages/admin/ExportPage').then((m) => ({ default: m.ExportPage }))
 )
 
-// Public landing page
+// Public landing page and legal pages
 const LandingPage = React.lazy(() =>
   import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage }))
+)
+const PrivacyPage = React.lazy(() =>
+  import('@/pages/landing/PrivacyPage').then((m) => ({ default: m.PrivacyPage }))
+)
+const TermsPage = React.lazy(() =>
+  import('@/pages/landing/TermsPage').then((m) => ({ default: m.TermsPage }))
 )
 
 const Spinner = (
@@ -116,13 +122,17 @@ function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
+        {/* Public legal pages */}
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms"   element={<TermsPage />} />
+
         {/* Parent dashboard (role = PARENT) */}
         <Route
           path="/parent/*"
           element={
-            <ProtectedRoute>
+            <RoleRoute roles={['PARENT']}>
               <ParentLayout />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
@@ -138,9 +148,9 @@ function AppRoutes() {
         <Route
           path="/clinician/*"
           element={
-            <ProtectedRoute>
+            <RoleRoute roles={['CLINICIAN']}>
               <ClinicianLayout />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
@@ -157,9 +167,9 @@ function AppRoutes() {
         <Route
           path="/admin/*"
           element={
-            <ProtectedRoute>
+            <RoleRoute roles={['ADMIN']}>
               <AdminLayout />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
@@ -182,11 +192,11 @@ function AppRoutes() {
           }
         />
 
-        {/* Root: landing page for guests, dashboard for authenticated users */}
+        {/* Root: landing page for guests, role-home for authenticated users */}
         <Route
           path="/"
           element={
-            user ? <Navigate to="/parent/dashboard" replace /> : <LandingPage />
+            user ? <Navigate to={ROLE_HOME[user.role]} replace /> : <LandingPage />
           }
         />
 

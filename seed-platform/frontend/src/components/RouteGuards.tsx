@@ -3,6 +3,14 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { UserRole } from '@/types'
 
+// Maps each role to its home route. Used for post-login redirects and
+// wrong-role redirects — avoids landing anyone at the legacy /dashboard stub.
+export const ROLE_HOME: Record<UserRole, string> = {
+  PARENT:    '/parent/dashboard',
+  CLINICIAN: '/clinician/dashboard',
+  ADMIN:     '/admin/dashboard',
+}
+
 interface ProtectedRouteProps {
   children: React.ReactNode
 }
@@ -51,7 +59,8 @@ export const RoleRoute: React.FC<RoleRouteProps> = ({ children, roles }) => {
   }
 
   if (!roles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />
+    // Redirect to the user's own home — not the legacy /dashboard stub
+    return <Navigate to={ROLE_HOME[user.role]} replace />
   }
 
   return <>{children}</>
