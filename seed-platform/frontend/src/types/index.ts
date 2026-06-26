@@ -4,7 +4,7 @@ export type UserRole = 'PARENT' | 'CLINICIAN' | 'ADMIN'
 
 export type SessionType = 'VIDEO' | 'GAME' | 'COMBINED'
 
-export type SessionStatus = 'PENDING' | 'PROCESSING' | 'COMPLETE' | 'FAILED'
+export type SessionStatus = 'PENDING' | 'PROCESSING' | 'COMPLETE' | 'FAILED' | 'PARTIAL_ANALYSIS'
 
 // LOW deliberately excluded — system never definitively clears a child
 export type RiskTier = 'MONITOR' | 'INDETERMINATE' | 'ELEVATED'
@@ -202,6 +202,12 @@ export interface InviteValidationResponse {
 }
 
 // Risk tier display config
+// ⚠ COLOR SOURCE OF TRUTH: RiskTierBadge.tsx (src/components/parent/RiskTierBadge.tsx).
+// These colors MUST stay in sync with RiskTierBadge CONFIG.
+// MONITOR uses emerald (reassuring — system never definitively clears a child, but
+// parent-facing language should be warm). INDETERMINATE uses amber. ELEVATED uses red.
+// Any component needing tier colors should use RiskTierBadge directly rather than
+// importing this config, to avoid drift.
 export const RISK_TIER_CONFIG: Record<RiskTier, {
   label: string
   description: string
@@ -210,24 +216,24 @@ export const RISK_TIER_CONFIG: Record<RiskTier, {
   borderClass: string
 }> = {
   MONITOR: {
-    label: 'Monitor Closely',
-    description: 'Some developmental patterns warrant attention. Regular monitoring recommended.',
-    colorClass: 'text-amber-700',
-    bgClass: 'bg-amber-50',
-    borderClass: 'border-amber-200',
+    label: 'Typical Development',
+    description: 'Responses are within expected developmental ranges. Continue routine monitoring.',
+    colorClass: 'text-emerald-800',
+    bgClass: 'bg-emerald-100',
+    borderClass: 'border-emerald-200',
   },
   INDETERMINATE: {
-    label: 'Indeterminate',
+    label: 'Discuss with Clinician',
     description: 'Results are inconclusive. Clinical evaluation is recommended.',
-    colorClass: 'text-orange-700',
-    bgClass: 'bg-orange-50',
-    borderClass: 'border-orange-200',
+    colorClass: 'text-amber-800',
+    bgClass: 'bg-amber-100',
+    borderClass: 'border-amber-200',
   },
   ELEVATED: {
-    label: 'Elevated Concern',
+    label: 'Specialist Recommended',
     description: 'Patterns suggest need for prompt clinical evaluation.',
-    colorClass: 'text-red-700',
-    bgClass: 'bg-red-50',
+    colorClass: 'text-red-800',
+    bgClass: 'bg-red-100',
     borderClass: 'border-red-200',
   },
 }

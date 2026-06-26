@@ -20,6 +20,7 @@ import { api } from '@/utils/api'
 import { useParentStore } from '@/stores/parentStore'
 import { formatDate } from '@/utils/age'
 import { WizardState } from './NewScreeningPage'
+import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,49 +59,48 @@ const MOCK_RESULTS: ResultsData = {
 }
 
 // ─── Risk tier display config ─────────────────────────────────────────────────
+// Colors are derived from RiskTierBadge.tsx — single source of truth.
+// Narrative text is parent-facing (plain language, non-alarming).
 
-interface TierConfig {
+interface TierCard {
   title:    string
   body:     string
   bg:       string
   border:   string
   titleCls: string
   bodyCls:  string
-  dotCls:   string
 }
 
-const TIER_CONFIG: Record<string, TierConfig> = {
+// These colors match RiskTierBadge CONFIG exactly — no divergence.
+const TIER_CARD: Record<string, TierCard> = {
   MONITOR: {
     title:    'Development Looks Typical',
-    body:     'Your child\'s responses are within expected ranges. Continue monthly check-ins and contact your pediatrician if you have any concerns.',
+    body:     'Your child\'s responses are within expected ranges. Continue monthly check-ins and contact your paediatrician if you have any concerns.',
     bg:       'bg-emerald-50',
     border:   'border-emerald-200',
     titleCls: 'text-emerald-800',
     bodyCls:  'text-emerald-700',
-    dotCls:   'bg-emerald-500',
   },
   INDETERMINATE: {
     title:    'Some Patterns Worth Discussing',
-    body:     'We noticed some responses that are worth reviewing with your child\'s doctor. This is not a diagnosis — many children in this range develop typically.',
+    body:     'We noticed some responses worth reviewing with your child\'s doctor. This is not a diagnosis — many children in this range develop typically.',
     bg:       'bg-amber-50',
     border:   'border-amber-200',
     titleCls: 'text-amber-800',
     bodyCls:  'text-amber-700',
-    dotCls:   'bg-amber-500',
   },
   ELEVATED: {
     title:    'We Recommend Speaking with a Specialist',
-    body:     "Your child's responses suggest some developmental patterns that a specialist should review. Your clinician will reach out within 72 hours to schedule a consultation.",
+    body:     'Your child\'s responses suggest some developmental patterns a specialist should review. Your clinician will reach out within 72 hours to schedule a consultation.',
     bg:       'bg-red-50',
     border:   'border-red-200',
     titleCls: 'text-red-800',
     bodyCls:  'text-red-700',
-    dotCls:   'bg-red-500',
   },
 }
 
-function getTierConfig(tier: DisplayTier): TierConfig {
-  return TIER_CONFIG[tier] ?? TIER_CONFIG.INDETERMINATE
+function getTierCard(tier: DisplayTier): TierCard {
+  return TIER_CARD[tier] ?? TIER_CARD.INDETERMINATE
 }
 
 // ─── Metric helpers ───────────────────────────────────────────────────────────
@@ -152,7 +152,7 @@ const SESSION_TYPE_LABEL: Record<string, string> = {
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function RiskTierCard({ tier }: { tier: DisplayTier }) {
-  const cfg = getTierConfig(tier)
+  const cfg = getTierCard(tier)
   return (
     <motion.div
       initial={{ scale: 0.88, opacity: 0 }}
@@ -160,13 +160,12 @@ function RiskTierCard({ tier }: { tier: DisplayTier }) {
       transition={{ type: 'spring', duration: 0.55, bounce: 0.28 }}
       className={`rounded-2xl border-2 ${cfg.bg} ${cfg.border} p-5`}
     >
-      <div className="flex items-start gap-3">
-        <span className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${cfg.dotCls}`} />
-        <div>
-          <h2 className={`text-lg font-bold mb-1 ${cfg.titleCls}`}>{cfg.title}</h2>
-          <p className={`text-sm leading-relaxed ${cfg.bodyCls}`}>{cfg.body}</p>
-        </div>
+      {/* RiskTierBadge at top — canonical label/color, no duplication */}
+      <div className="mb-3">
+        <RiskTierBadge tier={tier} size="md" />
       </div>
+      <h2 className={`text-lg font-bold mb-1 ${cfg.titleCls}`}>{cfg.title}</h2>
+      <p className={`text-sm leading-relaxed ${cfg.bodyCls}`}>{cfg.body}</p>
     </motion.div>
   )
 }
@@ -296,18 +295,26 @@ export function Step6_Results({ state }: Step6Props) {
       return
     }
 
+    // GET /screening/:id/results returns flat shape:
+    // { sessionId, status, sessionType, riskTier, compositeScore, rawMetrics, completedAt, ... }
+    // NOT { session: { ... } }
     api
-      .get<{ session: { riskTier?: string; compositeScore?: number; sessionType?: string; createdAt?: string; rawMetrics?: Record<string, unknown> } }>(
-        `/screening/${state.sessionId}/results`
-      )
+      .get<{
+        sessionId:      string
+        status:         string
+        sessionType?:   string
+        riskTier?:      string
+        compositeScore?: number
+        rawMetrics?:    Record<string, unknown>
+        completedAt?:   string
+      }>(`/screening/${state.sessionId}/results`)
       .then(({ data }) => {
-        const s = data.session
         setResults({
-          riskTier:       (s.riskTier ?? 'INDETERMINATE') as DisplayTier,
-          compositeScore: s.compositeScore ?? 0,
-          sessionType:    s.sessionType    ?? state.modality ?? 'COMBINED',
-          createdAt:      s.createdAt      ?? new Date().toISOString(),
-          metrics:        extractMetrics(s.rawMetrics),
+          riskTier:       (data.riskTier ?? 'INDETERMINATE') as DisplayTier,
+          compositeScore: data.compositeScore ?? 0,
+          sessionType:    data.sessionType    ?? state.modality ?? 'COMBINED',
+          createdAt:      data.completedAt    ?? new Date().toISOString(),
+          metrics:        extractMetrics(data.rawMetrics),
         })
       })
       .catch(() => {

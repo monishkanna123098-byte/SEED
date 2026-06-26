@@ -386,6 +386,23 @@ function SessionHeader({ detail }: { detail: SessionDetail }) {
           </div>
         </div>
       </div>
+
+      {/* Mandatory disclaimer — always visible, clinician view */}
+      <div className="px-6 pb-3">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg
+                        bg-red-50 border border-red-200">
+          <svg viewBox="0 0 20 20" fill="none" stroke="#E63946"
+            strokeWidth={1.5} className="w-4 h-4 flex-shrink-0">
+            <path d="M10 2L2 17h16L10 2z" />
+            <line x1="10" y1="8" x2="10" y2="11" strokeLinecap="round" />
+            <circle cx="10" cy="14" r="0.5" fill="#E63946" />
+          </svg>
+          <p className="text-xs text-red-700 leading-snug">
+            <strong>Screening tool only. Not a diagnostic instrument.</strong>{' '}
+            Clinical confirmation required before any therapeutic or referral decision.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
