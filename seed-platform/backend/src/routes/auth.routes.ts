@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { body } from 'express-validator'
+import { body, param } from 'express-validator'
 import bcrypt from 'bcrypt'
 import { v4 as uuidv4 } from 'uuid'
 import { UserRole } from '@prisma/client'
@@ -21,6 +21,11 @@ import { logger } from '../utils/logger'
 
 const router = Router()
 
+// ─── SQL Injection Audit Note ─────────────────────────────────────────────────
+// All DB operations use Prisma ORM methods (findUnique, create, update, etc.).
+// Prisma parameterizes every query by default. No raw $queryRaw or $executeRaw
+// calls exist in this file. Last audited: Stage 5A security hardening.
+
 const BCRYPT_ROUNDS = 12
 const REFRESH_COOKIE_NAME = 'seed_refresh'
 const COOKIE_OPTIONS = {
@@ -29,6 +34,48 @@ const COOKIE_OPTIONS = {
   sameSite: 'strict' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   path: '/',
+}
+
+// ─── Auth Event Logging ───────────────────────────────────────────────────────
+// Every authentication lifecycle event is persisted to the AuthEvent table.
+// Records: event type, outcome, user ID (if known at event time), source IP.
+// Used for security audits, anomaly detection, and DPDPA-2023 incident response.
+
+type AuthEventType =
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILURE'
+  | 'REGISTER_SUCCESS'
+  | 'REGISTER_FAILURE'
+  | 'LOGOUT'
+  | 'TOKEN_REFRESH_SUCCESS'
+  | 'TOKEN_REFRESH_FAILURE'
+  | 'EMAIL_VERIFIED'
+
+async function logAuthEvent(
+  req: import('express').Request,
+  event: AuthEventType,
+  userId: string | null,
+  detail?: string
+): Promise<void> {
+  try {
+    await prisma.authEvent.create({
+      data: {
+        event,
+        userId,
+        // X-Forwarded-For when behind a proxy (Docker/nginx), fallback to req.ip
+        ipAddress: (
+          (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()
+          ?? req.ip
+          ?? 'unknown'
+        ),
+        userAgent: (req.headers['user-agent'] ?? null),
+        detail: detail ?? null,
+      },
+    })
+  } catch (err) {
+    // Log to winston but never let auth event writes break the auth flow itself
+    logger.warn('Failed to write auth event', { event, userId, error: err })
+  }
 }
 
 // ─── POST /api/auth/register ────────────────────────────────────────────────
@@ -128,6 +175,8 @@ router.post(
 
           await sendVerificationEmail(email, name, verifyToken)
 
+          await logAuthEvent(req, 'REGISTER_SUCCESS', user.id, `role=${role}`)
+
           res.status(201).json({
             message: 'Registration successful. Check your email to verify your account.',
             userId: user.id,
@@ -153,19 +202,30 @@ router.post(
       await redis.setex(redisKeys.emailVerifyToken(verifyToken), 86400, user.id)
       await sendVerificationEmail(email, name, verifyToken)
 
+      await logAuthEvent(req, 'REGISTER_SUCCESS', user.id, `role=${role}`)
+
       res.status(201).json({
         message: 'Registration successful. Check your email to verify your account.',
         userId: user.id,
       })
     } catch (err) {
       logger.error('Registration error', { error: err, email })
+      await logAuthEvent(req, 'REGISTER_FAILURE', null, `email=${email}`)
       res.status(500).json({ error: 'Registration failed. Please try again.' })
     }
   }
 )
 
 // ─── POST /api/auth/verify-email/:token ────────────────────────────────────
-router.post('/verify-email/:token', async (req: Request, res: Response): Promise<void> => {
+router.post(
+  '/verify-email/:token',
+  validate([
+    param('token')
+      .trim()
+      .isUUID()
+      .withMessage('Verification token must be a valid UUID'),
+  ]),
+  async (req: Request, res: Response): Promise<void> => {
   const { token } = req.params
 
   try {
@@ -207,6 +267,8 @@ router.post('/verify-email/:token', async (req: Request, res: Response): Promise
 
     await redis.del(redisKeys.emailVerifyToken(token))
 
+    await logAuthEvent(req, 'EMAIL_VERIFIED', userId)
+
     res.json({ message: 'Email verified successfully. You can now log in.' })
   } catch (err) {
     logger.error('Email verification error', { error: err })
@@ -234,11 +296,13 @@ router.post(
         : await bcrypt.compare(password, dummyHash)
 
       if (!user || !passwordMatch) {
+        await logAuthEvent(req, 'LOGIN_FAILURE', user?.id ?? null, 'Invalid credentials')
         res.status(401).json({ error: 'Invalid email or password' })
         return
       }
 
       if (!user.isEmailVerified) {
+        await logAuthEvent(req, 'LOGIN_FAILURE', user.id, 'Email not verified')
         res.status(403).json({
           error: 'Email not verified. Check your inbox for the verification link.',
           code: 'EMAIL_NOT_VERIFIED',
@@ -250,6 +314,8 @@ router.post(
       const refreshToken = await signRefreshToken(user.id, user.email, user.role)
 
       res.cookie(REFRESH_COOKIE_NAME, refreshToken, COOKIE_OPTIONS)
+
+      await logAuthEvent(req, 'LOGIN_SUCCESS', user.id)
 
       res.json({
         accessToken,
@@ -304,6 +370,8 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
 
     res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, COOKIE_OPTIONS)
 
+    await logAuthEvent(req, 'TOKEN_REFRESH_SUCCESS', user.id)
+
     res.json({
       accessToken: newAccessToken,
       user: {
@@ -316,6 +384,7 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
     })
   } catch (err) {
     logger.warn('Token refresh failed', { error: err instanceof Error ? err.message : err })
+    await logAuthEvent(req, 'TOKEN_REFRESH_FAILURE', null)
     res.clearCookie(REFRESH_COOKIE_NAME)
     res.status(401).json({ error: 'Invalid or expired refresh token' })
   }
@@ -341,6 +410,8 @@ router.post('/logout', authenticateToken, async (req: Request, res: Response): P
       const remainingSeconds = getTokenRemainingSeconds(req.user.exp)
       await blacklistAccessToken(req.user.jti, remainingSeconds)
     }
+
+    await logAuthEvent(req, 'LOGOUT', req.user!.sub)
 
     res.clearCookie(REFRESH_COOKIE_NAME, { path: '/' })
     res.json({ message: 'Logged out successfully' })

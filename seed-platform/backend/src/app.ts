@@ -42,16 +42,17 @@ io.on('connection', (socket) => {
 })
 
 // ─── Security & Core Middleware ────────────────────────────────────────────
+// helmet() adds HTTP security headers.
+// CSP is intentionally omitted — it applies to HTML document responses only,
+// not JSON API responses. Applying CSP here has no effect and misleads auditors.
+// crossOriginResourcePolicy: 'cross-origin' — required because the frontend
+// (Vite :5173 / CDN) is served from a different origin than this API (:3001).
+// The default 'require-corp' would block cross-origin fetch in strict environments.
+// crossOriginEmbedderPolicy: false — required for Socket.io polling transport.
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:'],
-    },
-  },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
 }))
 
 app.use(cors({
@@ -82,9 +83,11 @@ const globalLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again later.' },
 })
 
+// Login is limited to 5 attempts per IP per 15-minute window.
+// Applies to /api/auth/login and /api/auth/register — see wiring below.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10, // Strict limit on auth endpoints
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts. Please wait 15 minutes.' },

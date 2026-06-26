@@ -8,6 +8,13 @@
  * GET  /api/screening/:id/status
  * GET  /api/screening/:id/results
  * GET  /api/screening/history/:childId
+ *
+ * SQL INJECTION AUDIT (2025-07-01):
+ * All database operations in this file use Prisma ORM methods exclusively
+ * (findUnique, findMany, create, update, findFirst). Prisma parameterizes
+ * every query by default. No raw $queryRaw or $executeRaw calls exist here.
+ * Adding user input directly to query strings is structurally impossible
+ * with this pattern. Last audited: Stage 5A security hardening.
  */
 
 import { Router, Request, Response } from 'express'
@@ -41,17 +48,58 @@ const videoStorage = multer.diskStorage({
   },
 })
 
+// ─── Magic byte signatures for accepted video formats ─────────────────────────
+// File MIME type and extension can be trivially spoofed by the client.
+// We validate by reading the actual file header (magic bytes) after multer writes
+// the file to disk, before any DB write or queue enqueue.
+//
+//  MP4 / MOV (QuickTime):
+//    Bytes 4–7: 'ftyp' (0x66 74 79 70) — ISO Base Media file format box
+//    Bytes 4–7: 'moov' (0x6D 6F 6F 76) — older QuickTime variant
+//    Bytes 4–7: 'free' (0x66 72 65 65) — rare QuickTime freeform box
+//    Bytes 4–7: 'wide' (0x77 69 64 65) — rare QuickTime wide box
+//    Bytes 0–3: 0x00 00 00 xx (size prefix before box type) — so we check offset 4
+//  WebM:
+//    Bytes 0–3: 0x1A 45 DF A3 (EBML header)
+
+type MagicSignature = { offset: number; bytes: number[] }
+
+const VIDEO_MAGIC: MagicSignature[] = [
+  // ISO Base Media (MP4, M4V, MOV 'ftyp' box)
+  { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // 'ftyp'
+  // QuickTime older variants
+  { offset: 4, bytes: [0x6D, 0x6F, 0x6F, 0x76] }, // 'moov'
+  { offset: 4, bytes: [0x66, 0x72, 0x65, 0x65] }, // 'free'
+  { offset: 4, bytes: [0x77, 0x69, 0x64, 0x65] }, // 'wide'
+  // WebM / MKV (EBML)
+  { offset: 0, bytes: [0x1A, 0x45, 0xDF, 0xA3] },
+]
+
+async function isValidVideoMagicBytes(filePath: string): Promise<boolean> {
+  // Read first 12 bytes — enough to cover offset-4 signatures
+  const buf = Buffer.alloc(12)
+  let fd: number | undefined
+  try {
+    fd = fs.openSync(filePath, 'r')
+    const bytesRead = fs.readSync(fd, buf, 0, 12, 0)
+    if (bytesRead < 8) return false // file too small to be a valid video
+  } catch {
+    return false
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd)
+  }
+
+  return VIDEO_MAGIC.some(({ offset, bytes }) =>
+    bytes.every((b, i) => buf[offset + i] === b)
+  )
+}
+
 const videoUpload = multer({
   storage: videoStorage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['video/mp4', 'video/webm', 'video/quicktime']
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true)
-    } else {
-      cb(new Error(`Invalid video type: ${file.mimetype}. Accepted: mp4, webm, mov`))
-    }
-  },
+  // Enforce 100MB hard cap. The declared MIME type is NOT checked here —
+  // client-declared MIME is trivially spoofable. Magic byte validation runs
+  // in the route handler after the file lands on disk.
+  limits: { fileSize: 100 * 1024 * 1024 },
 })
 
 // ─── All screening routes require auth ────────────────────────────────────────
@@ -169,25 +217,38 @@ router.post(
 router.post(
   '/upload-video',
   videoUpload.single('video'),
+  // express-validator for body fields (multer populates req.body from multipart)
+  validate([
+    body('sessionId').isUUID().withMessage('Valid session ID required'),
+    body('childAgeMonths')
+      .isInt({ min: 24, max: 60 })
+      .withMessage('childAgeMonths must be an integer between 24 and 60'),
+  ]),
   async (req: Request, res: Response): Promise<void> => {
     if (!req.file) {
       res.status(400).json({ error: 'No video file provided' })
       return
     }
 
-    const { sessionId, childAgeMonths } = req.body as {
-      sessionId: string
-      childAgeMonths: string
-    }
+    const { sessionId } = req.body as { sessionId: string; childAgeMonths: string }
+    const ageMonths = parseInt((req.body as { childAgeMonths: string }).childAgeMonths, 10)
 
-    if (!sessionId) {
-      res.status(400).json({ error: 'sessionId required' })
-      return
-    }
-
-    const ageMonths = parseInt(childAgeMonths ?? '36', 10)
-    if (isNaN(ageMonths) || ageMonths < 24 || ageMonths > 60) {
-      res.status(400).json({ error: 'childAgeMonths must be 24-60' })
+    // ── Magic byte validation ────────────────────────────────────────────────
+    // Client-declared MIME type (req.file.mimetype) is trivially spoofable.
+    // Read the actual file header and reject if it doesn't match a known video
+    // signature. Delete the file before returning to prevent storage accumulation.
+    const validVideo = await isValidVideoMagicBytes(req.file.path)
+    if (!validVideo) {
+      fs.unlink(req.file.path, () => {}) // async cleanup, error non-fatal
+      logger.warn('Video upload rejected — invalid magic bytes', {
+        sessionId,
+        declaredMime: req.file.mimetype,
+        filename: req.file.filename,
+        userId: req.user!.sub,
+      })
+      res.status(415).json({
+        error: 'File rejected. Only MP4, WebM, and MOV video formats are accepted.',
+      })
       return
     }
 
@@ -198,6 +259,7 @@ router.post(
       })
 
       if (!session) {
+        fs.unlink(req.file.path, () => {})
         res.status(404).json({ error: 'Session not found' })
         return
       }
@@ -227,6 +289,8 @@ router.post(
           'Screening tool only. Not a diagnostic instrument. Clinical confirmation required.',
       })
     } catch (err) {
+      // Clean up uploaded file on any downstream error
+      if (req.file) fs.unlink(req.file.path, () => {})
       logger.error('Video upload error', { error: err, sessionId })
       res.status(500).json({ error: 'Failed to queue video analysis' })
     }

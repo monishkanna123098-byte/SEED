@@ -75,6 +75,9 @@ model User {
   children         Child[]   @relation("ParentChildren")
   assignedChildren Child[]   @relation("ClinicianChildren")
 
+  // Auth event audit log — nullable FK to allow events before user exists
+  authEvents       AuthEvent[]
+
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -209,4 +212,39 @@ model NormativeBaseline {
 
   @@unique([ageGroupMonths, metricType])
   @@index([ageGroupMonths])
+}
+
+// ─── Auth Event Audit Log ─────────────────────────────────────────────────────
+// Persists every authentication lifecycle event for security auditing and
+// DPDPA-2023 incident response. userId is nullable because the user may not
+// yet be known at event time (e.g. LOGIN_FAILURE before user lookup completes).
+//
+// Retention: recommended 90 days for normal events, 1 year for failure events.
+// Purge policy to be implemented in a scheduled maintenance job.
+
+model AuthEvent {
+  id        String   @id @default(uuid())
+
+  // Event classification
+  event     String   // 'LOGIN_SUCCESS' | 'LOGIN_FAILURE' | 'REGISTER_SUCCESS' |
+                     // 'REGISTER_FAILURE' | 'LOGOUT' | 'TOKEN_REFRESH_SUCCESS' |
+                     // 'TOKEN_REFRESH_FAILURE' | 'EMAIL_VERIFIED'
+
+  // Who — null if user not yet identified (e.g. failed login with unknown email)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Where — source IP and user agent for audit trail
+  ipAddress String
+  userAgent String?
+
+  // Optional structured detail (failure reason, role registered, etc.)
+  detail    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
+  @@index([ipAddress])
 }

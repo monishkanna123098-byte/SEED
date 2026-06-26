@@ -8,6 +8,13 @@
  * PATCH /api/clinician/sessions/:id/referral — update referral status
  * POST  /api/clinician/invite-code       — generate invite code (re-exported here)
  * GET   /api/clinician/invite-codes      — list own invite codes
+ *
+ * SQL INJECTION AUDIT (2025-07-01):
+ * All DB operations use Prisma ORM methods exclusively (findMany, findFirst,
+ * update). Prisma parameterizes every query by default. No raw $queryRaw or
+ * $executeRaw calls exist in this file. getSessionForClinician() uses a WHERE
+ * clause with two parameterized fields (id, child.clinicianId) — no string
+ * interpolation. Last audited: Stage 5A security hardening.
  */
 
 import { Router, Request, Response } from 'express'
