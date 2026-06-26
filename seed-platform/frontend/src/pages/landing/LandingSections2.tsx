@@ -317,8 +317,8 @@ export function DisclaimerSection() {
           <strong>S.E.E.D. is a screening support tool, not a diagnostic instrument.</strong>{' '}
           Results do not constitute a medical diagnosis. Always consult a qualified
           healthcare professional for any developmental concerns. The platform is
-          currently in pilot phase — clinical validation with a 500+ child multi-site
-          study is planned.
+          currently in pilot phase. Clinical validation studies are being planned
+          in collaboration with partner institutions.
         </p>
       </div>
     </motion.section>
@@ -331,8 +331,8 @@ export function DisclaimerSection() {
 
 const FOOTER_LINKS = [
   { label: 'About',          href: '#' },
-  { label: 'Privacy Policy', href: '#' },
-  { label: 'Terms of Use',   href: '#' },
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Terms of Use',   href: '/terms' },
   { label: 'Contact',        href: '#' },
 ]
 
@@ -360,14 +360,27 @@ export function LandingFooter() {
         {/* Links */}
         <nav className="flex flex-wrap items-center justify-center gap-1">
           {FOOTER_LINKS.map(({ label, href }) => (
-            <a
-              key={label}
-              href={href}
-              className="px-3 py-1.5 text-xs text-white/50 hover:text-white
-                         transition-colors rounded-lg hover:bg-white/5"
-            >
-              {label}
-            </a>
+            href.startsWith('/')
+              ? (
+                <Link
+                  key={label}
+                  to={href}
+                  className="px-3 py-1.5 text-xs text-white/50 hover:text-white
+                             transition-colors rounded-lg hover:bg-white/5"
+                >
+                  {label}
+                </Link>
+              )
+              : (
+                <a
+                  key={label}
+                  href={href}
+                  className="px-3 py-1.5 text-xs text-white/50 hover:text-white
+                             transition-colors rounded-lg hover:bg-white/5"
+                >
+                  {label}
+                </a>
+              )
           ))}
         </nav>
 

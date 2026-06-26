@@ -397,22 +397,11 @@ export function HeroSection() {
               Start Screening
             </Link>
             <Link
-              to="/register?role=clinician"
-              className="px-7 py-3.5 rounded-xl border-2 font-semibold text-sm
+              to="/register"
+              className="px-7 py-3.5 rounded-xl border-2 border-seed-navy font-semibold text-sm
+                         text-seed-navy bg-transparent
+                         hover:bg-seed-navy hover:text-white
                          transition-all duration-200 hover:-translate-y-0.5"
-              style={{
-                borderColor: C.navy,
-                color: C.navy,
-                backgroundColor: 'transparent',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = C.navy
-                e.currentTarget.style.color = 'white'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = C.navy
-              }}
             >
               For Clinicians →
             </Link>
