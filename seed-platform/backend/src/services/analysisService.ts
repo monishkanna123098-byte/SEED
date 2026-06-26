@@ -10,12 +10,12 @@
  */
 
 import Bull from 'bull'
+import Redis from 'ioredis'
 import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'
 import path from 'path'
 import { prisma } from '../utils/prisma'
-import { redis } from '../utils/redis'
 import { io } from '../app'
 import { logger } from '../utils/logger'
 import { MetricType, ReferralStatus, SessionStatus } from '@prisma/client'
@@ -23,13 +23,25 @@ import { MetricType, ReferralStatus, SessionStatus } from '@prisma/client'
 const ANALYSIS_URL = process.env.ANALYSIS_ENGINE_URL ?? 'http://localhost:8001'
 
 // ─── Bull Queue ───────────────────────────────────────────────────────────────
+//
+// Bull requires three independent Redis connections (client, subscriber, bclient).
+// subscriber enters pub/sub mode and bclient issues blocking commands — neither
+// can share a connection. We create a fresh ioredis instance per call from
+// REDIS_URL so all three respect the same env-driven config without interference.
+//
+// Default fallback targets the 'redis' Docker service name on port 6379.
+
+const REDIS_URL = process.env.REDIS_URL ?? 'redis://redis:6379'
+
+function makeBullRedis(): Redis {
+  return new Redis(REDIS_URL, {
+    maxRetriesPerRequest: null, // required for Bull blocking clients
+    enableReadyCheck: false,
+  })
+}
 
 export const analysisQueue = new Bull('seed-analysis', {
-  redis: {
-    host: process.env.REDIS_HOST ?? 'redis',
-    port: parseInt(process.env.REDIS_PORT ?? '6379'),
-    password: process.env.REDIS_PASSWORD,
-  },
+  createClient: (_type) => makeBullRedis(),
   defaultJobOptions: {
     attempts: 3,
     backoff: { type: 'exponential', delay: 5000 },

@@ -2,8 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies for Sharp (native bindings)
-RUN apk add --no-cache python3 make g++ vips-dev
+# openssl: required by Prisma query engine on Alpine (libssl dependency)
+# python3/make/g++/vips-dev: required by Sharp native bindings
+RUN apk add --no-cache openssl python3 make g++ vips-dev
 
 COPY package*.json ./
 RUN npm ci

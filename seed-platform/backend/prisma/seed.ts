@@ -17,17 +17,10 @@
 
 import { PrismaClient, UserRole } from '@prisma/client'
 import bcrypt from 'bcrypt'
-import { addDays, subYears, subMonths } from 'date-fns'
-
-// date-fns not a dep — inline helpers
+// Inline date helpers — date-fns is not a backend dependency
 function addDaysToDate(date: Date, days: number): Date {
   const d = new Date(date)
   d.setDate(d.getDate() + days)
-  return d
-}
-function subtractYears(date: Date, years: number): Date {
-  const d = new Date(date)
-  d.setFullYear(d.getFullYear() - years)
   return d
 }
 function subtractMonths(date: Date, months: number): Date {
@@ -159,7 +152,7 @@ async function main() {
 
   const parent1 = await prisma.user.create({
     data: {
-      email: 'kavitha.suresh@gmail.com',
+      email: 'kavithasuresh@gmail.com',
       passwordHash: parentHash,
       role: UserRole.PARENT,
       name: 'Kavitha Suresh',
@@ -175,7 +168,7 @@ async function main() {
 
   const parent2 = await prisma.user.create({
     data: {
-      email: 'ramesh.krishnan@gmail.com',
+      email: 'rameshkrishnan@gmail.com',
       passwordHash: parentHash,
       role: UserRole.PARENT,
       name: 'Ramesh Krishnan',
@@ -190,7 +183,7 @@ async function main() {
 
   const parent3 = await prisma.user.create({
     data: {
-      email: 'meera.nair@gmail.com',
+      email: 'meeranair@gmail.com',
       passwordHash: parentHash,
       role: UserRole.PARENT,
       name: 'Meera Nair',
@@ -205,7 +198,7 @@ async function main() {
 
   const parent4 = await prisma.user.create({
     data: {
-      email: 'vijay.patel@gmail.com',
+      email: 'vijaypatel@gmail.com',
       passwordHash: parentHash,
       role: UserRole.PARENT,
       name: 'Vijay Patel',
@@ -397,7 +390,7 @@ async function main() {
   console.log('Admin:      admin@seed-platform.in / Admin@SEED2024')
   console.log('Clinician1: dr.priya.rajan@seed-platform.in / Clinician@SEED2024')
   console.log('Clinician2: dr.arjun.mehta@seed-platform.in / Clinician2@SEED2024')
-  console.log('Parents:    kavitha.suresh@gmail.com / Parent@SEED2024 (and 3 others)')
+  console.log('Parents:    kavithasuresh@gmail.com / Parent@SEED2024 (and 3 others)')
   console.log('Available invite codes: PRIYA3, PRIYA4, ARJUN3, ARJUN4')
   console.log('⚠️  All normative values marked [APPROXIMATE] must be replaced')
   console.log('    with India-collected clinical data before deployment.')

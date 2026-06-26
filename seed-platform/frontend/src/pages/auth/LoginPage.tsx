@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '@/stores/authStore'
+import { ROLE_HOME } from '@/components/RouteGuards'
 import { SEEDLogo } from '@/components/SEEDLogo'
 import { Disclaimer } from '@/components/Disclaimer'
 
@@ -18,14 +19,16 @@ export const LoginPage: React.FC = () => {
   const [step, setStep] = useState<LoginStep>('form')
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/dashboard'
+  // Where to send the user after login:
+  // 1. Back to the protected page they were trying to reach (state.from)
+  // 2. Otherwise, their role's home (PARENT→/parent/dashboard, etc.)
+  const intendedPath = (location.state as { from?: { pathname: string } })?.from?.pathname
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate(from, { replace: true })
+      navigate(intendedPath ?? ROLE_HOME[user.role], { replace: true })
     }
-  }, [user, navigate, from])
+  }, [user, navigate, intendedPath])
 
   useEffect(() => {
     return () => clearError()
