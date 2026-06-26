@@ -17,8 +17,6 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useParentStore, selectChild } from '@/stores/parentStore'
 import { calculateAge } from '@/utils/age'
-import { api } from '@/utils/api'
-import { Child } from '@/types'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -282,29 +280,24 @@ export function ParentLayout() {
     return () => mq.removeEventListener('change', handle)
   }, [])
 
-  // Fetch children from API on mount; redirect if the API confirms no children exist
-  const { setChildren, setSelectedChildId, setChildrenFetched } = useParentStore()
+  // Load real children from the API on mount.
+  // fetchChildren() lives in the store — it populates children[] and
+  // selectedChildId, or leaves them as [] on network failure.
+  // If the API responds with zero children, send the parent to add their first child.
+  const { fetchChildren, childrenFetched } = useParentStore()
   const navigate = useNavigate()
 
   useEffect(() => {
-    api
-      .get<{ children: Child[] }>('/children')
-      .then(({ data }) => {
-        setChildrenFetched(true)
-        if (data.children?.length) {
-          setChildren(data.children)
-          setSelectedChildId(data.children[0].id)
-        } else {
-          // API confirmed zero children — clear mock data and send to add-child
-          setChildren([])
-          navigate('/parent/children/add', { replace: true })
-        }
-      })
-      .catch(() => {
-        // API unavailable (demo / dev mode) — keep mock data, no redirect
-        setChildrenFetched(true)
-      })
-  }, [setChildren, setSelectedChildId, setChildrenFetched, navigate])
+    if (childrenFetched) return   // already loaded this session — don't re-fetch
+    fetchChildren().then((children) => {
+      if (children !== null && children.length === 0) {
+        // API is reachable and confirmed zero children — go to add-child
+        navigate('/parent/children/add', { replace: true })
+      }
+      // children === null  → API unavailable; stay on current route with empty list
+      // children.length > 0 → store already populated; nothing more to do
+    })
+  }, [fetchChildren, childrenFetched, navigate])
 
   return (
     <div className="min-h-screen bg-seed-ice">

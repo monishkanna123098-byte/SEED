@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.routes'
 import screeningRoutes from './routes/screening.routes'
 import clinicianRoutes from './routes/clinician.routes'
 import notificationRoutes from './routes/notification.routes'
+import childrenRoutes from './routes/children.routes'
 
 const app = express()
 const httpServer = http.createServer(app)
@@ -137,6 +138,7 @@ app.use('/api/clinician', authRoutes)
 app.use('/api/clinician', clinicianRoutes)
 app.use('/api/screening', screeningRoutes)
 app.use('/api/notifications', notificationRoutes)
+app.use('/api/children', childrenRoutes)
 
 // Health check — used by Docker and analysis engine
 app.get('/health', (_req, res) => {

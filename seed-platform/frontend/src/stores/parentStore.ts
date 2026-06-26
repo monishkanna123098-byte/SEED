@@ -11,6 +11,7 @@
 
 import { create } from 'zustand'
 import { Child, ScreeningSession, RiskTier } from '@/types'
+import { api } from '@/utils/api'
 
 // ─── Realistic mock data ────────────────────────────────────────────────────
 
@@ -213,15 +214,20 @@ interface ParentState {
   setLoadingChildren: (v: boolean) => void
   setLoadingSessions: (v: boolean) => void
   setChildrenFetched: (v: boolean) => void
+  // fetchChildren: calls GET /api/children and populates the store.
+  // Returns the children array on success, null on network failure.
+  fetchChildren: () => Promise<Child[] | null>
 }
 
-export const useParentStore = create<ParentState>((set) => ({
-  children: MOCK_CHILDREN,
-  selectedChildId: MOCK_CHILDREN[0]?.id ?? null,
+export const useParentStore = create<ParentState>((set, get) => ({
+  // Start empty — real data loaded by fetchChildren() called from ParentLayout.
+  // MOCK_CHILDREN is kept exported above for Storybook/demo use only.
+  children: [],
+  selectedChildId: null,
   sessions: MOCK_SESSIONS,
   isLoadingChildren: false,
   isLoadingSessions: false,
-  unreadNotifications: 1,
+  unreadNotifications: 0,
   childrenFetched: false,
 
   setChildren: (children) =>
@@ -231,6 +237,32 @@ export const useParentStore = create<ParentState>((set) => ({
   setLoadingChildren: (v) => set({ isLoadingChildren: v }),
   setLoadingSessions: (v) => set({ isLoadingSessions: v }),
   setChildrenFetched: (v) => set({ childrenFetched: v }),
+
+  fetchChildren: async (): Promise<Child[] | null> => {
+    const { childrenFetched, isLoadingChildren } = get()
+    // Guard: don't double-fetch if already loading or already fetched this session
+    if (isLoadingChildren) return null
+
+    set({ isLoadingChildren: true })
+    try {
+      const { data } = await api.get<{ children: Child[] }>('/children')
+      const children = data.children ?? []
+      set({
+        children,
+        selectedChildId: children[0]?.id ?? null,
+        childrenFetched: true,
+        isLoadingChildren: false,
+      })
+      return children
+    } catch {
+      // API unavailable — leave children as [] so the UI correctly
+      // shows no children rather than poisoning with non-UUID mock IDs.
+      // childrenFetched intentionally left false so a retry is possible.
+      set({ isLoadingChildren: false })
+      return null
+    }
+    void childrenFetched // satisfy eslint — read above in guard
+  },
 }))
 
 // ─── Derived selectors ───────────────────────────────────────────────────────

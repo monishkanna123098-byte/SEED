@@ -5,7 +5,10 @@
  * rendering MChatQuestionnaire so the questionnaire has a valid sessionId.
  * Auto-advances to Step 3 on questionnaire completion.
  *
- * Falls back to a mock sessionId if the API is unavailable (demo mode).
+ * POST /screening/start returns { sessionId: string }.
+ * Falls back to a non-UUID mock sessionId ONLY on genuine network failure
+ * (no HTTP response). Real API errors (400, 403, 404, 500) are surfaced to
+ * the user rather than silently masked with a fake ID.
  */
 
 import { useEffect, useState } from 'react'
@@ -30,25 +33,43 @@ export function Step2_MChatWrapper({ state, onNext }: Step2Props) {
   // Create the screening session on mount (if not already created)
   useEffect(() => {
     if (sessionId) return  // already have one (resumed from sessionStorage)
+    if (!state.selectedChildId) {
+      setCreateError('No child selected. Please go back and select a child.')
+      setSessionStatus('error')
+      return
+    }
 
+    // POST /api/screening/start returns { sessionId: string } — NOT { session: { id } }
     api
-      .post<{ session: { id: string } }>('/screening/start', {
+      .post<{ sessionId: string }>('/screening/start', {
         childId: state.selectedChildId,
-        sessionType: 'COMBINED',  // will be scoped after modality selection in Step 3
+        sessionType: 'COMBINED',  // narrowed to actual modality after Step 3
       })
       .then(({ data }) => {
-        const id = data.session?.id ?? `session-mock-${Date.now()}`
-        setSessionId(id)
+        if (!data.sessionId) {
+          // Backend responded 2xx but without a sessionId — treat as a server error
+          setCreateError('Server returned an unexpected response. Please try again.')
+          setSessionStatus('error')
+          return
+        }
+        setSessionId(data.sessionId)
         setSessionStatus('ready')
       })
-      .catch((err) => {
-        const msg = extractApiError(err)
-        // Network error = demo mode; use a mock id and continue
-        if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed')) {
+      .catch((err: unknown) => {
+        // Only fall back to demo mode on a genuine network failure — i.e. the
+        // request never reached the server (no response object on the error).
+        // Any error with an HTTP response (400 validation, 403 auth, 404 not found)
+        // is a real problem that must be shown to the user, not silently swallowed.
+        const hasResponse = !!(err as { response?: unknown }).response
+
+        if (!hasResponse) {
+          // True network failure (offline, server down, CORS) — demo mode
           const mockId = `session-demo-${Date.now()}`
           setSessionId(mockId)
           setSessionStatus('ready')
         } else {
+          // HTTP error from the server — surface the real message
+          const msg = extractApiError(err)
           setCreateError(msg)
           setSessionStatus('error')
         }
