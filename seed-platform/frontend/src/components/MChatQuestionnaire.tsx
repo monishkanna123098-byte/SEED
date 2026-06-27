@@ -353,13 +353,18 @@ export const MChatQuestionnaire: React.FC<MChatQuestionnaireProps> = ({
         completedAt
       )
 
+      // Build the answers object the backend expects: { "1": true, "2": false, ... }
+      // Keys are the MCHAT_ITEMS[i].id (1-indexed integers, sent as strings via JSON).
+      const answersObject = Object.fromEntries(
+        MCHAT_ITEMS.map((item, i) => [String(item.id), score.answers[i]])
+      )
+
       setSubmitting(true)
       try {
         await api.post('/screening/mchat', {
           sessionId,
-          answers: score.answers,
-          risk_flags: score.risk_flags,
-          total_score: score.total_score,
+          answers: answersObject,
+          score: score.total_score,
           risk_band: score.risk_band,
           completion_time_ms: score.completion_time_ms,
           started_at: score.started_at,
