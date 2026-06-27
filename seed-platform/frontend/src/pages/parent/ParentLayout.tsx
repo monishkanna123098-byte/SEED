@@ -69,6 +69,11 @@ function Icon({ name }: { name: string }) {
         <line x1="3" y1="18" x2="21" y2="18" />
       </svg>
     ),
+    logout: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   }
   return <>{icons[name] ?? null}</>
 }
@@ -157,6 +162,14 @@ function ChildSelector({ collapsed }: { collapsed: boolean }) {
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
 function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const navigate = useNavigate()
+  const { logout } = useAuthStore()
+
+  async function handleLogout() {
+    await logout()
+    navigate('/login')
+  }
+
   return (
     <aside
       className={`fixed top-0 left-0 h-full flex flex-col bg-seed-navy transition-all duration-300 z-40 ${
@@ -211,14 +224,28 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
         ))}
       </nav>
 
-      {/* Toggle button */}
-      <button
-        onClick={onToggle}
-        className="mx-2 mb-2 px-3 py-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center"
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        <Icon name="menu" />
-      </button>
+      {/* Logout + Toggle */}
+      <div className="px-2 pb-2 space-y-0.5">
+        <button
+          onClick={handleLogout}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
+                      text-sm text-white/50 hover:text-white hover:bg-white/10
+                      transition-colors ${collapsed ? 'justify-center' : ''}`}
+          title={collapsed ? 'Log out' : undefined}
+        >
+          <Icon name="logout" />
+          {!collapsed && <span>Log out</span>}
+        </button>
+
+        <button
+          onClick={onToggle}
+          className="w-full flex items-center justify-center px-3 py-2 rounded-lg
+                     text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <Icon name="menu" />
+        </button>
+      </div>
 
       {/* Disclaimer badge */}
       {!collapsed && (
