@@ -13,7 +13,7 @@
  * Step 5 blocks all back navigation unconditionally.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useParentStore } from '@/stores/parentStore'
 import { MChatScore } from '@/components/MChatQuestionnaire'
@@ -80,6 +80,15 @@ export function NewScreeningPage() {
   const [state, setRawState] = useState<WizardState>(() =>
     loadSaved(storeChildId)
   )
+
+  // Clear persisted wizard state once the screening reaches step 6 (completed).
+  // Without this, navigating back to /parent/screening/new would re-hydrate the
+  // old completed session instead of starting a fresh wizard.
+  useEffect(() => {
+    if (state.step === 6) {
+      try { sessionStorage.removeItem(WIZARD_KEY) } catch { /* quota */ }
+    }
+  }, [state.step])
 
   /**
    * Smart step-advance: step files call onNext() and routing logic lives here.
