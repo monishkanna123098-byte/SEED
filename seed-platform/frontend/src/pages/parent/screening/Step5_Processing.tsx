@@ -12,7 +12,6 @@
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { useBlocker } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { io, Socket } from 'socket.io-client'
 import { api } from '@/utils/api'
@@ -127,10 +126,7 @@ export function Step5_Processing({ state, onNext }: Step5Props) {
   }, [onNext])
 
   // ── Block back navigation ────────────────────────────────────────────────────
-  // useBlocker covers React Router navigation
-  useBlocker(() => true)
-
-  // popstate covers browser back button
+  // popstate covers browser back button (works with plain BrowserRouter).
   useEffect(() => {
     window.history.pushState(null, '', window.location.href)
     const guard = () => window.history.pushState(null, '', window.location.href)
@@ -171,9 +167,10 @@ export function Step5_Processing({ state, onNext }: Step5Props) {
       }
     })
 
-    socket.on('analysis:complete', (data: { riskTier?: string; score?: number }) => {
-      // Store result payload in wizard state so Step 6 can use it without a re-fetch
-      advance({ riskTierFromSocket: data.riskTier, scoreFromSocket: data.score })
+    socket.on('analysis:complete', () => {
+      // Step 6 fetches its own results via GET /api/screening/:id/results.
+      // No payload forwarding is needed here — just advance the wizard step.
+      advance()
     })
 
     // analysis:failed is the spec event name (not analysis:error)
