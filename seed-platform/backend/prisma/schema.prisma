@@ -245,3 +245,23 @@ model NormativeBaseline {
   @@unique([ageGroupMonths, metricType])
   @@index([ageGroupMonths])
 }
+
+// ─── Auth audit log ───────────────────────────────────────────────────────────
+// Persisted by logAuthEvent() in auth.routes.ts for every lifecycle event.
+// Used for security audits and DPDPA-2023 incident response.
+// userId is nullable: LOGIN_FAILURE and TOKEN_REFRESH_FAILURE fire before
+// a user is positively identified, so no FK is possible in those cases.
+model AuthEvent {
+  id          String    @id @default(uuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  event       String    // AuthEventType: LOGIN_SUCCESS | LOGIN_FAILURE | etc.
+  ipAddress   String?
+  userAgent   String?   // req.headers['user-agent'] — can be null for headless clients
+  detail      String?   // Optional free-text context (e.g. "role=PARENT")
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
+}
