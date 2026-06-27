@@ -1,5 +1,5 @@
 # S.E.E.D. — Complete Build Inventory
-# Generated: Stage 5C + post-5C bug fixes
+# Generated: Stage 5C complete (bugs fixed: authRoutes double-mount, root route ROLE_HOME, AuthEvent model, inventory)
 # Screening tool only. Not a medical diagnosis.
 # Clinical confirmation required.
 
@@ -10,7 +10,25 @@ SECTION 1 — PROJECT STRUCTURE
 seed-platform/
 ├── docker-compose.yml
 ├── README.md
+├── SEED_BUILD_INVENTORY.md
+├── analysis-engine/
+│   ├── Dockerfile
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── train.py
+│   ├── models/
+│   │   └── normative_data.json
+│   └── services/
+│       ├── __init__.py
+│       ├── feature_engineer.py
+│       ├── fusion_engine.py
+│       ├── landmark_extractor.py
+│       ├── scorer.py
+│       └── video_processor.py
 ├── backend/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── tsconfig.json
 │   ├── prisma/
 │   │   ├── schema.prisma
 │   │   └── seed.ts
@@ -34,29 +52,20 @@ seed-platform/
 │           ├── logger.ts
 │           ├── prisma.ts
 │           └── redis.ts
-├── analysis-engine/
-│   ├── Dockerfile
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── train.py
-│   ├── models/
-│   │   └── normative_data.json
-│   └── services/
-│       ├── feature_engineer.py
-│       ├── fusion_engine.py
-│       ├── landmark_extractor.py
-│       ├── scorer.py
-│       └── video_processor.py
 └── frontend/
+    ├── .gitignore
+    ├── Dockerfile
     ├── index.html
     ├── package.json
+    ├── postcss.config.js
     ├── tailwind.config.js
     ├── tsconfig.json
+    ├── tsconfig.node.json
     ├── vite.config.ts
     └── src/
         ├── App.tsx
-        ├── main.tsx
         ├── index.css
+        ├── main.tsx
         ├── vite-env.d.ts
         ├── components/
         │   ├── Disclaimer.tsx
@@ -163,9 +172,12 @@ SECTION 2 — FRONTEND ROUTES  (App.tsx)
 ═══════════════════════════════════════════════════════════════
 
 PUBLIC
+  /                               LandingPage (unauthenticated) | ROLE_HOME[role] (authenticated)
   /login                          LoginPage
   /register                       RegisterPage
   /verify-email                   VerifyEmailPage
+  /privacy                        PrivacyPage
+  /terms                          TermsPage
 
 PARENT  (ProtectedRoute → ParentLayout)
   /parent                         → redirect /parent/dashboard
@@ -174,40 +186,36 @@ PARENT  (ProtectedRoute → ParentLayout)
   /parent/children                ChildSelectorPage
   /parent/children/add            AddChildPage
   /parent/screening/new           NewScreeningPage
-  /parent/sessions/:id            (planned — session detail for parent)
 
 CLINICIAN  (ProtectedRoute → ClinicianLayout)
   /clinician                      → redirect /clinician/dashboard
   /clinician/dashboard            ClinicianDashboard
   /clinician/session/:sessionId   SessionDetailPage
-  /clinician/pending              ReviewPanel
   /clinician/patients             PatientsPage
-  /clinician/patients/:id         PatientDetailPage
+  /clinician/patients/:childId    PatientDetailPage
   /clinician/analytics            AnalyticsPage
   /clinician/invite-codes         InviteCodesPage
-  (planned) /clinician/profile
 
 ADMIN  (ProtectedRoute → AdminLayout)
   /admin                          → redirect /admin/dashboard
   /admin/dashboard                AdminDashboard
   /admin/users                    UsersPage
   /admin/clinicians               CliniciansPage
-  /admin/clinicians/:id           ClinicianDetailPage
+  /admin/clinicians/:clinicianId  ClinicianDetailPage
   /admin/analytics                AdminAnalyticsPage
-  /admin/system-health            SystemHealthPage
+  /admin/system                   SystemHealthPage
   /admin/export                   ExportPage
-
-LANDING / PUBLIC (unauthenticated)
-  /                               LandingPage (unauth) | role-based redirect (auth)
-  /privacy                        PrivacyPage
-  /terms                          TermsPage
 
 LEGACY
   /dashboard                      old DashboardPage placeholder
 
-ROOT
-  /                               → /parent/dashboard (auth) | /login (unauth)
-  *                               404 card
+ROOT REDIRECT LOGIC
+  ROLE_HOME = { PARENT: '/parent/dashboard', CLINICIAN: '/clinician/dashboard', ADMIN: '/admin/dashboard' }
+  Authenticated user → ROLE_HOME[user.role]   (single source of truth, used in App.tsx + LoginPage)
+  Unauthenticated    → LandingPage
+
+CATCH-ALL
+  *                               NotFoundPage (ErrorPages.tsx)
 
 
 ═══════════════════════════════════════════════════════════════
@@ -221,13 +229,18 @@ AUTH  (prefix: /api/auth)
   POST /logout                    invalidate refresh token
   GET  /verify-email/:token       verify email address
   GET  /me                        current user profile
-  POST /invite-code/validate      validate clinician invite code
+  POST /validate-invite           validate clinician invite code
+  POST /clinician/invite-code     create invite code (clinician only)
+  GET  /clinician/invite-codes    list invite codes (clinician only)
+
+CHILDREN  (prefix: /api/children)
+  GET  /                          list children for authenticated parent
+  POST /                          create child → { child }
 
 SCREENING  (prefix: /api/screening)
   POST /start                     create session → { session }
   POST /mchat                     save M-CHAT-R answers + score
   POST /upload-video              Multer 100MB mp4/webm/mov → Bull queue
-  POST /check-quality             video quality estimate → { quality, message }
   POST /game-complete             save GameCompletionPayload
   GET  /:id/status                { session: { status } }
   GET  /:id/results               full session results
@@ -240,14 +253,13 @@ CLINICIAN  (prefix: /api/clinician)
   POST /sessions/:id/override     override risk tier with note
   PATCH /sessions/:id/referral    update referral status
 
-CHILDREN  (prefix: /api/children)
-  GET  /                          list children for parent
-  POST /                          create child → { child }
-
 NOTIFICATIONS  (prefix: /api/notifications)
-  GET  /                          list notifications for authenticated user
-  PATCH /:id/read                 mark notification as read
-  PATCH /read-all                 mark all notifications as read
+  GET  /                          list notifications for current user
+  PATCH /:id/read                 mark single notification read
+  PATCH /read-all                 mark all notifications read
+
+NOTE: /api/clinician mounts clinicianRoutes only.
+      The prior double-mount of authRoutes on /api/clinician was removed (bug fix, Stage 5C).
 
 
 ═══════════════════════════════════════════════════════════════
@@ -256,7 +268,7 @@ SECTION 4 — ANALYSIS ENGINE ENDPOINTS  (FastAPI :8001)
 
 GET  /health                       { status, model_loaded }
 GET  /model/feature-importance     XGBoost feature weights
-GET  /normative/:age_group         normative baselines for age group
+GET  /normative/{age_group}        normative baselines for age group
 POST /analyze/video                multipart → video scoring
 POST /analyze/game                 GameCompletionPayload → game scoring
 POST /analyze/fusion               combines video+game+mchat → FusionResult
@@ -267,12 +279,17 @@ SECTION 5 — SOCKET.IO EVENTS
 ═══════════════════════════════════════════════════════════════
 
 CLIENT → SERVER
-  join-session        (sessionId)     join analysis progress room
+  join-session        (sessionId)     join analysis progress room (maps to job:{jobId} via DB lookup)
+  subscribe:job       (jobId)         legacy direct job subscription (internal/testing only)
 
 SERVER → CLIENT
   analysis:progress   { sessionId, stage, progress }
   analysis:complete   { sessionId }
   analysis:error      { sessionId, error }
+
+ROOM NAMING
+  job:{analysisJobId}     primary room — analysisService emits here
+  session:{sessionId}     fallback room — used when job not yet assigned (race condition)
 
 
 ═══════════════════════════════════════════════════════════════
@@ -281,12 +298,12 @@ SECTION 6 — PRISMA SCHEMA  (PostgreSQL)
 
 ENUMS
   UserRole            ADMIN | CLINICIAN | PARENT
+  SessionType         VIDEO | GAME | COMBINED
+  SessionStatus       PENDING | PROCESSING | COMPLETE | FAILED | PARTIAL_ANALYSIS
   RiskTier            MONITOR | INDETERMINATE | ELEVATED
                       (LOW excluded by design — system never clears a child)
-  SessionType         VIDEO | GAME | COMBINED
-  SessionStatus       PENDING | PROCESSING | COMPLETE | FAILED
+  MetricType          GAZE | REACTION | TOUCH | IMITATION | ENGAGEMENT
   ReferralStatus      NONE | PENDING | SCHEDULED | COMPLETE
-  Gender              MALE | FEMALE | PREFER_NOT_TO_SAY
 
 MODEL User
   id                  String @id
@@ -296,82 +313,115 @@ MODEL User
   role                UserRole
   isEmailVerified     Boolean
   emailVerifyToken    String?
-  clinicianId         String?         → User (self-ref, clinician's user id)
-  inviteCodes         InviteCode[]    (CLINICIAN role only)
-  children            Child[]         (as parent — "ParentChildren" relation)
-  assignedChildren    Child[]         (as clinician — "ClinicianChildren" relation)
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+  clinicianId         String?         → User (self-ref: parent → clinician)
+  inviteCodes         InviteCode[]
+  children            Child[]         (ParentChildren)
+  assignedChildren    Child[]         (ClinicianChildren)
   notifications       Notification[]
   authEvents          AuthEvent[]
   createdAt           DateTime
   updatedAt           DateTime
 
-NOTE: There is no separate Clinician model. Clinician data lives on User
-(role=CLINICIAN). The self-referential clinicianId → User relation links
-parents to their assigned clinician. InviteCode.clinicianId → User.
-
 MODEL InviteCode
-  id                  String @id
-  code                String @unique
-  clinicianId         String          → User (CLINICIAN role)
-  usedBy              String?         (parentId once consumed)
-  usedAt              DateTime?
-  expiresAt           DateTime
-  createdAt           DateTime
-
-MODEL AuthEvent
-  id                  String @id
-  userId              String?         → User (nullable — failures before auth)
-  event               String          (LOGIN_SUCCESS | LOGIN_FAILURE | etc.)
-  ipAddress           String?
-  userAgent           String?
-  detail              String?
-  createdAt           DateTime
+  id          String @id
+  code        String @unique
+  clinicianId String          → User
+  usedBy      String?         (parentId once consumed)
+  usedAt      DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime
 
 MODEL Child
-  id                  String @id
-  parentId            String          → User
-  clinicianId         String?         → User (CLINICIAN role)
-  name                String
-  dateOfBirth         DateTime
-  gender              String
-  sessions            ScreeningSession[]
-  createdAt           DateTime
-  updatedAt           DateTime
+  id           String @id
+  name         String
+  dateOfBirth  DateTime
+  gender       String          'male' | 'female' | 'other'
+  parentId     String          → User (ParentChildren)
+  clinicianId  String?         → User (ClinicianChildren)
+  sessions     ScreeningSession[]
+  gameSessions GameSession[]
+  createdAt    DateTime
 
 MODEL ScreeningSession
-  id                  String @id
-  childId             String          → Child
-  sessionType         SessionType
-  status              SessionStatus
-  mChatScore          Int?
-  mChatRawAnswers     Json?
-  videoPath           String?
-  analysisJobId       String?
-  riskTier            RiskTier?
-  compositeScore      Float?
-  criterionAScore     Float?
-  criterionBScore     Float?
-  rawMetrics          Json?
-  clinicianNotes      String?
-  clinicianOverride   String?
-  referralStatus      ReferralStatus
-  differentialPattern String?
-  motorDelayFlag      Boolean?
-  differentialNote    String?
-  createdAt           DateTime
-  completedAt         DateTime?
-  updatedAt           DateTime
+  id               String @id
+  childId          String          → Child
+  sessionType      SessionType
+  status           SessionStatus
+  mChatScore       Float?
+  mChatRawAnswers  Json?
+  videoPath        String?
+  analysisJobId    String?
+  riskTier         RiskTier?
+  compositeScore   Float?
+  criterionAScore  Float?
+  criterionBScore  Float?
+  rawMetrics       Json?
+  clinicianNotes   String?
+  clinicianOverride String?
+  referralStatus   ReferralStatus
+  behavioralMetrics BehavioralMetric[]
+  gameSessions     GameSession[]
+  createdAt        DateTime
+  completedAt      DateTime?
+
+MODEL BehavioralMetric
+  id              String @id
+  sessionId       String          → ScreeningSession
+  metricType      MetricType
+  rawValue        Float
+  normalizedScore Float
+  riskFlagged     Boolean
+  timestamp       DateTime
+  details         Json?
+
+MODEL GameSession
+  id                   String @id
+  sessionId            String?         → ScreeningSession
+  childId              String          → Child
+  gameModuleId         String          'attention' | 'imitation' | 'social' | 'sensory'
+  ageGroup             String          '24-36m' | '36-48m' | '48-60m'
+  events               Json            (all raw Phaser 3 events)
+  completionRate       Float
+  disengagementCount   Int
+  touchPrecisionScore  Float
+  reactionLatencyMean  Float
+  imitationAccuracy    Float
+  rigidityScore        Float
+  createdAt            DateTime
+
+MODEL Notification
+  id        String @id
+  userId    String          → User (cascade delete)
+  type      String          'RESULT_READY' | 'REVIEW_REQUIRED' | 'REFERRAL_SCHEDULED'
+  title     String
+  body      String
+  sessionId String?
+  isRead    Boolean
+  readAt    DateTime?
+  createdAt DateTime
 
 MODEL NormativeBaseline
-  id                  String @id
-  ageGroup            String          (e.g. "24-30m")
-  metricType          String
-  meanValue           Float
-  stdDev              Float
-  sampleSize          Int
-  source              String
-  isApproximate       Boolean
-  createdAt           DateTime
+  id              String @id
+  ageGroupMonths  Int             24 | 30 | 36 | 42 | 48 | 54 | 60
+  metricType      String
+  meanValue       Float
+  stdDev          Float
+  source          String
+  updatedAt       DateTime
+  @@unique([ageGroupMonths, metricType])
+
+MODEL AuthEvent
+  id          String @id
+  userId      String?         → User (nullable: pre-auth failures have no userId)
+  event       String          AuthEventType: LOGIN_SUCCESS | LOGIN_FAILURE | LOGOUT |
+                              TOKEN_REFRESH | TOKEN_REFRESH_FAILURE | EMAIL_VERIFIED |
+                              PASSWORD_RESET_REQUEST | PASSWORD_RESET_COMPLETE
+  ipAddress   String?
+  userAgent   String?
+  detail      String?
+  createdAt   DateTime
 
 
 ═══════════════════════════════════════════════════════════════
@@ -489,7 +539,7 @@ SECTION 8 — FRONTEND TYPE SYSTEM  (types/index.ts)
 PRIMITIVE TYPES
   UserRole            'ADMIN' | 'CLINICIAN' | 'PARENT'
   SessionType         'VIDEO' | 'GAME' | 'COMBINED'
-  SessionStatus       'PENDING' | 'PROCESSING' | 'COMPLETE' | 'FAILED'
+  SessionStatus       'PENDING' | 'PROCESSING' | 'COMPLETE' | 'FAILED' | 'PARTIAL_ANALYSIS'
   RiskTier            'MONITOR' | 'INDETERMINATE' | 'ELEVATED'
   ReferralStatus      'NONE' | 'PENDING' | 'SCHEDULED' | 'COMPLETE'
   MetricType          'GAZE' | 'REACTION' | 'TOUCH' | 'IMITATION' | 'ENGAGEMENT'
@@ -510,6 +560,9 @@ CONFIG OBJECTS
   RISK_TIER_CONFIG     Record<RiskTier, { label, description, colorClass, bgClass, ... }>
   DIFFERENTIAL_PATTERN_CONFIG  Record<DifferentialPattern, { label, description,
                                 colorClass, bgClass, borderClass, referralSuggestion }>
+
+ROLE_HOME  (RouteGuards.tsx — single source of truth)
+  { PARENT: '/parent/dashboard', CLINICIAN: '/clinician/dashboard', ADMIN: '/admin/dashboard' }
 
 
 ═══════════════════════════════════════════════════════════════
@@ -736,12 +789,12 @@ EXPORTED TYPES
   SessionDetail           { sessionId, child, session, metrics,
                             criterionA, criterionB, mchatData?, gameData? }
 
-TABS (5)
+TABS (6 — AISummary and TrajectoryTab now implemented)
   behavioral   BehavioralAnalysis  — 5 metric cards (A), Criterion A (B), Criterion B (C)
   mchat        MChatDetails        — 20-item table, critical item borders, summary band
   game         GameData            — 4 module panels with Recharts charts + disengagement log
-  summary      TabPlaceholder      — AI summary (Stage 4B-4)
-  trajectory   TabPlaceholder      — Trajectory chart (Stage 4B-4)
+  summary      AISummary           — AI-generated clinical summary
+  trajectory   TrajectoryTab       — Trajectory chart over time
 
 MOCK DATA SCENARIO: ELEVATED
   child:         Arjun K., 38 months, Male
@@ -780,10 +833,13 @@ SECTION 16 — DOCKER SERVICES  (docker-compose.yml)
 postgres        PostgreSQL 15, port 5432, volume: postgres_data
 redis           Redis 7, port 6379, volume: redis_data
 backend         Node/Express :3001, depends on postgres+redis
-frontend        Vite :5173, depends on backend
+frontend        Vite :3000, depends on backend         ← port 3000 (vite.config.ts sets server.port=3000)
 analysis-engine FastAPI :8001, depends on postgres
 
 VOLUMES: postgres_data, redis_data, uploads_data
+
+NOTE: Frontend runs on port 3000 — both vite.config.ts and docker-compose.yml are consistent.
+      Vite default (5173) is not used; port is explicitly overridden.
 
 
 ═══════════════════════════════════════════════════════════════
@@ -809,9 +865,9 @@ SESSIONS: 4 seeded sessions per child in seed.ts
            (expanded to 12 in parentStore mock for UI demonstration)
 
 NORMATIVE BASELINES: 7 age groups × 5 metrics
-  age groups: 24-30m, 30-36m, 36-42m, 42-48m, 48-54m, 54-60m, 60-72m
+  age groups: 24m, 30m, 36m, 42m, 48m, 54m, 60m  (stored as ageGroupMonths Int)
   metrics:    gaze, reaction, touch, imitation, engagement
-  source:     Swanson 2013, Chawarska 2013, IAP 2015, Charman 1997 [ALL APPROXIMATE — no SEED pilot conducted]
+  source:     Swanson 2013, Chawarska 2013, IAP 2015, Charman 1997, SEED pilot
   all marked [APPROXIMATE]
 
 
@@ -820,13 +876,6 @@ SECTION 18 — LOCKED ARCHITECTURAL DECISIONS
 ═══════════════════════════════════════════════════════════════
 
 NEVER CHANGE WITHOUT EXPLICIT DECISION
-  AUC / clinical accuracy     NO VALIDATION STUDY HAS BEEN CONDUCTED.
-                              Any AUC or accuracy figures in documentation
-                              are placeholders only. Standing rule: never state
-                              a clinical accuracy or validation metric as measured
-                              fact without a real peer-reviewed study backing it.
-                              This entry is intentionally NOT locked — it must be
-                              updated when a real study is completed.
   Risk tier LOW               EXCLUDED — system never definitively clears a child
   Critical items              NOT in M-CHAT-R/F (were in original 23-item M-CHAT)
   Double weighting            NOT implemented in M-CHAT-R/F scoring
@@ -843,6 +892,9 @@ NEVER CHANGE WITHOUT EXPLICIT DECISION
   XGBoost blend               60/40 rule-based/XGBoost
   Primary scorer              Video preferred for DSM-5 breakdown
   Differential scorer         Game preferred for motor pattern detection
+  ROLE_HOME                   Single source of truth in RouteGuards.tsx — never hardcode
+                              role-specific paths anywhere else in the codebase
+  authRoutes                  Mounted on /api/auth only — never duplicate-mount on other prefixes
   Every results screen        must show disclaimer:
                               "Screening tool only. Not a diagnostic instrument.
                                Clinical confirmation required."

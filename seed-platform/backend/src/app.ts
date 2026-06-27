@@ -134,7 +134,6 @@ app.use('/api/auth/register', authLimiter)
 
 // ─── Routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes)
-app.use('/api/clinician', authRoutes)
 app.use('/api/clinician', clinicianRoutes)
 app.use('/api/screening', screeningRoutes)
 app.use('/api/notifications', notificationRoutes)

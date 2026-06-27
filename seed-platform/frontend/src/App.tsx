@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuthStore } from '@/stores/authStore'
-import { ProtectedRoute } from '@/components/RouteGuards'
+import { ProtectedRoute, ROLE_HOME } from '@/components/RouteGuards'
 import { ErrorBoundary, NotFoundPage } from '@/pages/errors/ErrorPages'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
@@ -183,11 +183,11 @@ function AppRoutes() {
           }
         />
 
-        {/* Root: landing page for guests, dashboard for authenticated users */}
+        {/* Root: landing page for guests, role-home redirect for authenticated users */}
         <Route
           path="/"
           element={
-            user ? <Navigate to="/parent/dashboard" replace /> : <LandingPage />
+            user ? <Navigate to={ROLE_HOME[user.role]} replace /> : <LandingPage />
           }
         />
 
