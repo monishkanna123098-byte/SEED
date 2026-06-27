@@ -1,5 +1,5 @@
 # S.E.E.D. — Complete Build Inventory
-# Generated: Stage 4B-3 complete
+# Generated: Stage 5C + post-5C bug fixes
 # Screening tool only. Not a medical diagnosis.
 # Clinical confirmation required.
 
@@ -22,7 +22,9 @@ seed-platform/
 │       │   └── validate.middleware.ts
 │       ├── routes/
 │       │   ├── auth.routes.ts
+│       │   ├── children.routes.ts
 │       │   ├── clinician.routes.ts
+│       │   ├── notification.routes.ts
 │       │   └── screening.routes.ts
 │       ├── services/
 │       │   └── analysisService.ts
@@ -59,6 +61,7 @@ seed-platform/
         ├── components/
         │   ├── Disclaimer.tsx
         │   ├── MChatQuestionnaire.tsx
+        │   ├── NotificationBell.tsx
         │   ├── RouteGuards.tsx
         │   ├── SEEDLogo.tsx
         │   └── parent/
@@ -85,19 +88,48 @@ seed-platform/
         │       ├── ProgressBar.ts
         │       └── SoundManager.ts
         ├── pages/
+        │   ├── admin/
+        │   │   ├── AdminAnalyticsPage.tsx
+        │   │   ├── AdminDashboard.tsx
+        │   │   ├── AdminLayout.tsx
+        │   │   ├── ClinicianDetailPage.tsx
+        │   │   ├── CliniciansPage.tsx
+        │   │   ├── ExportPage.tsx
+        │   │   ├── SystemHealthPage.tsx
+        │   │   ├── UsersPage.tsx
+        │   │   ├── mockClinicians.ts
+        │   │   └── mockUsers.ts
         │   ├── auth/
         │   │   ├── LoginPage.tsx
         │   │   ├── RegisterPage.tsx
         │   │   └── VerifyEmailPage.tsx
         │   ├── clinician/
+        │   │   ├── AnalyticsPage.tsx
         │   │   ├── ClinicianLayout.tsx
         │   │   ├── DashboardPage.tsx
+        │   │   ├── InviteCodesPage.tsx
+        │   │   ├── PatientDetailPage.tsx
+        │   │   ├── PatientsPage.tsx
+        │   │   ├── ReviewPanel.tsx
         │   │   ├── SessionDetailPage.tsx
+        │   │   ├── mockPatients.ts
         │   │   └── tabs/
+        │   │       ├── AISummary.tsx
         │   │       ├── BehavioralAnalysis.tsx
         │   │       ├── GameData.tsx
         │   │       ├── MChatDetails.tsx
-        │   │       └── TabPlaceholder.tsx
+        │   │       ├── TabPlaceholder.tsx
+        │   │       └── TrajectoryTab.tsx
+        │   ├── dashboard/
+        │   │   └── DashboardPage.tsx
+        │   ├── errors/
+        │   │   └── ErrorPages.tsx
+        │   ├── landing/
+        │   │   ├── LandingPage.tsx
+        │   │   ├── LandingSections.tsx
+        │   │   ├── LandingSections2.tsx
+        │   │   ├── PrivacyPage.tsx
+        │   │   └── TermsPage.tsx
         │   └── parent/
         │       ├── DashboardPage.tsx
         │       ├── HistoryPage.tsx
@@ -148,11 +180,27 @@ CLINICIAN  (ProtectedRoute → ClinicianLayout)
   /clinician                      → redirect /clinician/dashboard
   /clinician/dashboard            ClinicianDashboard
   /clinician/session/:sessionId   SessionDetailPage
-  (planned) /clinician/pending
-  (planned) /clinician/patients
-  (planned) /clinician/analytics
-  (planned) /clinician/invite-codes
+  /clinician/pending              ReviewPanel
+  /clinician/patients             PatientsPage
+  /clinician/patients/:id         PatientDetailPage
+  /clinician/analytics            AnalyticsPage
+  /clinician/invite-codes         InviteCodesPage
   (planned) /clinician/profile
+
+ADMIN  (ProtectedRoute → AdminLayout)
+  /admin                          → redirect /admin/dashboard
+  /admin/dashboard                AdminDashboard
+  /admin/users                    UsersPage
+  /admin/clinicians               CliniciansPage
+  /admin/clinicians/:id           ClinicianDetailPage
+  /admin/analytics                AdminAnalyticsPage
+  /admin/system-health            SystemHealthPage
+  /admin/export                   ExportPage
+
+LANDING / PUBLIC (unauthenticated)
+  /                               LandingPage (unauth) | role-based redirect (auth)
+  /privacy                        PrivacyPage
+  /terms                          TermsPage
 
 LEGACY
   /dashboard                      old DashboardPage placeholder
@@ -192,10 +240,14 @@ CLINICIAN  (prefix: /api/clinician)
   POST /sessions/:id/override     override risk tier with note
   PATCH /sessions/:id/referral    update referral status
 
-(planned) CHILDREN  (prefix: /api/children)
+CHILDREN  (prefix: /api/children)
   GET  /                          list children for parent
   POST /                          create child → { child }
-  GET  /:id                       child profile
+
+NOTIFICATIONS  (prefix: /api/notifications)
+  GET  /                          list notifications for authenticated user
+  PATCH /:id/read                 mark notification as read
+  PATCH /read-all                 mark all notifications as read
 
 
 ═══════════════════════════════════════════════════════════════
@@ -244,36 +296,44 @@ MODEL User
   role                UserRole
   isEmailVerified     Boolean
   emailVerifyToken    String?
-  refreshToken        String?
-  clinicianId         String?         → Clinician
+  clinicianId         String?         → User (self-ref, clinician's user id)
+  inviteCodes         InviteCode[]    (CLINICIAN role only)
+  children            Child[]         (as parent — "ParentChildren" relation)
+  assignedChildren    Child[]         (as clinician — "ClinicianChildren" relation)
+  notifications       Notification[]
+  authEvents          AuthEvent[]
   createdAt           DateTime
   updatedAt           DateTime
 
-MODEL Clinician
-  id                  String @id
-  userId              String @unique  → User
-  specialty           String?
-  licenseNumber       String?
-  inviteCodes         InviteCode[]
-  children            Child[]
-  createdAt           DateTime
+NOTE: There is no separate Clinician model. Clinician data lives on User
+(role=CLINICIAN). The self-referential clinicianId → User relation links
+parents to their assigned clinician. InviteCode.clinicianId → User.
 
 MODEL InviteCode
   id                  String @id
   code                String @unique
-  clinicianId         String          → Clinician
-  maxUses             Int
-  usedCount           Int
-  isActive            Boolean
+  clinicianId         String          → User (CLINICIAN role)
+  usedBy              String?         (parentId once consumed)
+  usedAt              DateTime?
+  expiresAt           DateTime
+  createdAt           DateTime
+
+MODEL AuthEvent
+  id                  String @id
+  userId              String?         → User (nullable — failures before auth)
+  event               String          (LOGIN_SUCCESS | LOGIN_FAILURE | etc.)
+  ipAddress           String?
+  userAgent           String?
+  detail              String?
   createdAt           DateTime
 
 MODEL Child
   id                  String @id
   parentId            String          → User
-  clinicianId         String?         → Clinician
+  clinicianId         String?         → User (CLINICIAN role)
   name                String
   dateOfBirth         DateTime
-  gender              Gender
+  gender              String
   sessions            ScreeningSession[]
   createdAt           DateTime
   updatedAt           DateTime
@@ -751,7 +811,7 @@ SESSIONS: 4 seeded sessions per child in seed.ts
 NORMATIVE BASELINES: 7 age groups × 5 metrics
   age groups: 24-30m, 30-36m, 36-42m, 42-48m, 48-54m, 54-60m, 60-72m
   metrics:    gaze, reaction, touch, imitation, engagement
-  source:     Swanson 2013, Chawarska 2013, IAP 2015, Charman 1997, SEED pilot
+  source:     Swanson 2013, Chawarska 2013, IAP 2015, Charman 1997 [ALL APPROXIMATE — no SEED pilot conducted]
   all marked [APPROXIMATE]
 
 
@@ -760,7 +820,13 @@ SECTION 18 — LOCKED ARCHITECTURAL DECISIONS
 ═══════════════════════════════════════════════════════════════
 
 NEVER CHANGE WITHOUT EXPLICIT DECISION
-  AUC                         0.89 on pilot n=47 (NOT 0.92)
+  AUC / clinical accuracy     NO VALIDATION STUDY HAS BEEN CONDUCTED.
+                              Any AUC or accuracy figures in documentation
+                              are placeholders only. Standing rule: never state
+                              a clinical accuracy or validation metric as measured
+                              fact without a real peer-reviewed study backing it.
+                              This entry is intentionally NOT locked — it must be
+                              updated when a real study is completed.
   Risk tier LOW               EXCLUDED — system never definitively clears a child
   Critical items              NOT in M-CHAT-R/F (were in original 23-item M-CHAT)
   Double weighting            NOT implemented in M-CHAT-R/F scoring

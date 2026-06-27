@@ -93,10 +93,12 @@ Children's health data requires clinician prescription gating under Schedule IV.
 Implemented via clinician-generated invite codes that parents must use to register.
 
 ### Model honesty
-AUC 0.89 is reported on a pilot of n=47 children (80/20 held-out test set).
-This is a proof-of-concept figure. The model requires substantially more Indian
-cohort data before clinical use. All normative baselines are marked `[APPROXIMATE]`
-and must be replaced with India-collected data pre-deployment.
+No clinical validation study has been conducted. Any accuracy or AUC figures
+that appear in documentation or comments are placeholders — they are not based
+on a real cohort study. All normative baselines are marked `[APPROXIMATE]`
+and must be replaced with India-collected data before any clinical use.
+A formal validation study on an adequately sized, representative Indian cohort
+is required before this system is used in any clinical or research setting.
 
 ### Citations
 - NRC 2001: National Research Council, *Educating Children with Autism*
