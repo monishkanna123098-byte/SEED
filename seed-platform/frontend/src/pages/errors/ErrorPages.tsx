@@ -10,7 +10,6 @@
  */
 
 import React from 'react'
-import { Link } from 'react-router-dom'
 
 // ─── Shared layout shell (used by all error pages) ────────────────────────────
 
@@ -59,13 +58,13 @@ export function NotFoundPage() {
         The page you're looking for doesn't exist or may have been moved.
       </p>
 
-      <Link
-        to="/"
+      <a
+        href="/"
         className="block w-full py-2.5 rounded-xl bg-seed-navy text-white text-sm
                    font-semibold hover:bg-seed-teal transition-colors"
       >
         Back to home
-      </Link>
+      </a>
     </ErrorShell>
   )
 }
@@ -107,13 +106,13 @@ export function ServerErrorPage({ onRetry, message }: ServerErrorPageProps) {
             Try again
           </button>
         )}
-        <Link
-          to="/"
+        <a
+          href="/"
           className="block w-full py-2.5 rounded-xl border border-slate-200 text-seed-dark
                      text-sm font-semibold hover:bg-seed-ice transition-colors"
         >
           Go to home
-        </Link>
+        </a>
       </div>
     </ErrorShell>
   )
