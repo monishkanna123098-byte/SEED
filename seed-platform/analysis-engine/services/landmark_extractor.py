@@ -270,8 +270,8 @@ def extract_touch_signals(game_events: List[Dict[str, Any]]) -> TouchPrecisionSi
         etype = evt.get("type")
 
         if etype == "tap":
-            tx, ty = evt.get("target_x", 0), evt.get("target_y", 0)
-            ax, ay = evt.get("actual_x", 0), evt.get("actual_y", 0)
+            tx, ty = evt.get("target_x") or 0, evt.get("target_y") or 0
+            ax, ay = evt.get("actual_x") or 0, evt.get("actual_y") or 0
             radius = evt.get("target_radius", 60)
             dist = np.sqrt((ax - tx)**2 + (ay - ty)**2)
             hit = 1.0 if dist <= radius else 0.0
