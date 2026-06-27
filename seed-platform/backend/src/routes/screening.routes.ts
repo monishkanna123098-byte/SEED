@@ -419,7 +419,6 @@ router.get(
     try {
       const session = await prisma.screeningSession.findUnique({
         where: { id: req.params.id },
-        include: { child: true },
         select: {
           id: true,
           status: true,
