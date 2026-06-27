@@ -7,7 +7,10 @@ WORKDIR /app
 RUN apk add --no-cache openssl python3 make g++ vips-dev
 
 COPY package*.json ./
-RUN npm ci
+# npm install is used instead of npm ci because there is no committed
+# package-lock.json for the backend yet. Once a lockfile is generated
+# and committed, switch this back to `npm ci` for reproducible builds.
+RUN npm install
 
 COPY . .
 
