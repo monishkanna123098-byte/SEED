@@ -1,4 +1,5 @@
 import React from 'react'
+import { AlertTriangle } from 'lucide-react'
 
 interface DisclaimerProps {
   variant?: 'footer' | 'banner' | 'inline'
@@ -16,7 +17,7 @@ export const Disclaimer: React.FC<DisclaimerProps> = ({
         aria-live="polite"
         className={`bg-seed-amber/10 border border-seed-amber/30 rounded-xl px-4 py-3 flex items-start gap-3 ${className}`}
       >
-        <span className="text-seed-amber text-lg flex-shrink-0 mt-0.5" aria-hidden="true">⚠</span>
+        <AlertTriangle className="text-seed-amber flex-shrink-0 mt-0.5" size={18} aria-hidden="true" />
         <p className="text-sm text-seed-dark font-medium">
           <strong>Screening tool only.</strong> Not a diagnostic instrument.
           Clinical confirmation required before any intervention decisions.

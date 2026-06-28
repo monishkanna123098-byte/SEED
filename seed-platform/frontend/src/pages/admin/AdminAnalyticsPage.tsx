@@ -12,6 +12,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { ChevronUp, ChevronDown, ChevronsUpDown, AlertTriangle, Check } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer, ReferenceLine,
@@ -427,7 +428,7 @@ function SortTH({ label, field, active, dir, onSort }: {
       <span className="inline-flex items-center gap-1">
         {label}
         <span className={`text-[10px] ${active ? 'text-seed-teal' : 'text-slate-300'}`}>
-          {active ? (dir === 'asc' ? '↑' : '↓') : '↕'}
+          {active ? (dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronsUpDown size={12} />}
         </span>
       </span>
     </th>
@@ -541,10 +542,10 @@ function AggregateTable() {
                     {row.overdueReviews > 0 ? (
                       <span className="inline-flex items-center gap-1 text-xs font-bold
                                        text-red-700 bg-red-100 px-2.5 py-1 rounded-full">
-                        ⚠ {row.overdueReviews}
+                        <AlertTriangle size={11} /> {row.overdueReviews}
                       </span>
                     ) : (
-                      <span className="text-xs font-semibold text-emerald-600">✓ None</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><Check size={12} /> None</span>
                     )}
                   </td>
                 </tr>

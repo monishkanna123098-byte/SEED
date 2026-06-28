@@ -12,6 +12,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
 import { useParentStore, selectChild } from '@/stores/parentStore'
 import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 import { TrajectoryChart } from '@/components/parent/TrajectoryChart'
@@ -143,7 +144,7 @@ function RecentSessions() {
           to="/parent/history"
           className="text-xs font-medium text-seed-teal hover:text-seed-navy underline underline-offset-2"
         >
-          View all history →
+          View all history <ArrowRight size={12} className="inline ml-0.5" />
         </Link>
       </div>
 
@@ -157,7 +158,7 @@ function RecentSessions() {
         <div className="py-8 text-center">
           <p className="text-sm text-seed-muted">No completed screenings yet.</p>
           <Link to="/parent/screening/new" className="text-sm font-medium text-seed-teal hover:text-seed-navy mt-2 inline-block">
-            Start your first screening →
+            Start your first screening <ArrowRight size={12} className="inline ml-0.5" />
           </Link>
         </div>
       )}

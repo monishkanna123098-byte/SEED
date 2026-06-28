@@ -15,6 +15,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { ChevronDown, ArrowRight, CheckCircle } from 'lucide-react'
 
 // ─── Colours (match Tailwind tokens, used in inline SVG where Tailwind can't) ──
 
@@ -403,7 +404,7 @@ export function HeroSection() {
                          hover:bg-seed-navy hover:text-white
                          transition-all duration-200 hover:-translate-y-0.5"
             >
-              For Clinicians →
+              For Clinicians <ArrowRight size={14} className="inline ml-1" />
             </Link>
           </motion.div>
 
@@ -700,7 +701,7 @@ export function HowItWorksSection() {
 
                 {/* Arrow between steps (mobile) */}
                 {i < HOW_STEPS.length - 1 && (
-                  <div className="md:hidden my-1 text-slate-300 text-2xl">↓</div>
+                  <div className="md:hidden my-1 flex justify-center text-slate-300"><ChevronDown size={24} /></div>
                 )}
 
                 <h3 className="text-lg font-bold mb-2" style={{ color: C.dark }}>
@@ -728,7 +729,7 @@ export function HowItWorksSection() {
                        font-semibold text-sm hover:bg-seed-navy transition-all duration-200
                        shadow-md hover:shadow-lg hover:-translate-y-0.5"
           >
-            Begin Your Child's Screening →
+            Begin Your Child's Screening <ArrowRight size={14} className="inline ml-1" />
           </Link>
           <p className="text-xs mt-3" style={{ color: C.muted }}>
             Free for families during pilot · Results reviewed by a licensed clinician

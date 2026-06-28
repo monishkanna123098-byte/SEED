@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Users, Stethoscope, Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { SEEDLogo } from '@/components/SEEDLogo'
 import { Disclaimer } from '@/components/Disclaimer'
@@ -232,7 +233,11 @@ export const RegisterPage: React.FC = () => {
                       : 'border-seed-muted/20 text-seed-muted hover:border-seed-teal/40'
                   }`}
                 >
-                  <div className="text-lg mb-0.5">{role === 'PARENT' ? '👨‍👩‍👧' : '🩺'}</div>
+                  <div className="flex justify-center mb-0.5">
+                    {role === 'PARENT'
+                      ? <Users size={20} className="text-current" />
+                      : <Stethoscope size={20} className="text-current" />}
+                  </div>
                   {role === 'PARENT' ? 'Parent / Guardian' : 'Clinician'}
                 </button>
               ))}
@@ -397,8 +402,8 @@ export const RegisterPage: React.FC = () => {
                       </div>
                     </div>
                     {inviteStatus.state === 'valid' && (
-                      <p className="text-seed-mint text-sm mt-1 font-medium">
-                        ✓ {inviteStatus.message}
+                      <p className="text-seed-mint text-sm mt-1 font-medium flex items-center gap-1">
+                        <Check size={14} />{inviteStatus.message}
                       </p>
                     )}
                     {(inviteStatus.state === 'invalid' || errors.inviteCode) && (

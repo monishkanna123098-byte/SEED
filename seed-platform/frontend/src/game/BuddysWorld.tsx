@@ -12,6 +12,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Users, Sparkles, PartyPopper } from 'lucide-react'
 import { api, extractApiError } from '@/utils/api'
 import { Disclaimer } from '@/components/Disclaimer'
 import { SEEDLogo } from '@/components/SEEDLogo'
@@ -32,9 +33,9 @@ interface BuddysWorldProps {
   onCancel?: () => void
 }
 
-const AGE_OPTIONS: Array<{ label: string; sublabel: string; ageMonths: number; emoji: string }> = [
-  { label: '3–4 years', sublabel: 'Younger group', ageMonths: 42, emoji: '🧒' },
-  { label: '4–5 years', sublabel: 'Older group', ageMonths: 54, emoji: '🧑' },
+const AGE_OPTIONS: Array<{ label: string; sublabel: string; ageMonths: number }> = [
+  { label: '3–4 years', sublabel: 'Younger group', ageMonths: 42 },
+  { label: '4–5 years', sublabel: 'Older group', ageMonths: 54 },
 ]
 
 const MAX_POLL_ATTEMPTS = 15
@@ -225,7 +226,7 @@ export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, onFinished,
                                  hover:border-seed-teal hover:bg-seed-teal/5 transition-all duration-200
                                  focus-visible:ring-2 focus-visible:ring-seed-teal focus-visible:ring-offset-2"
                     >
-                      <span className="text-4xl">{opt.emoji}</span>
+                      <Users className="text-seed-teal" size={36} />
                       <span className="font-bold text-seed-dark">{opt.label}</span>
                       <span className="text-xs text-seed-muted">{opt.sublabel}</span>
                     </button>
@@ -249,7 +250,7 @@ export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, onFinished,
                 className="seed-card"
               >
                 <div className="text-center mb-5">
-                  <div className="text-5xl mb-3">🌟</div>
+                  <div className="flex justify-center mb-3"><Sparkles className="text-seed-amber" size={40} /></div>
                   <h1 className="text-xl font-bold text-seed-dark mb-2">Before you begin</h1>
                 </div>
 
@@ -325,7 +326,7 @@ export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, onFinished,
                 animate={{ opacity: 1, scale: 1 }}
                 className="seed-card text-center"
               >
-                <div className="text-5xl mb-3">🎉</div>
+                <div className="flex justify-center mb-3"><PartyPopper className="text-seed-teal" size={40} /></div>
                 <h2 className="text-lg font-bold text-seed-dark mb-1">All done!</h2>
                 <p className="text-seed-muted text-sm">
                   Great job! Buddy had a wonderful time.

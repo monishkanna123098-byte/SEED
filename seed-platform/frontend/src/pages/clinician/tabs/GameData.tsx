@@ -16,6 +16,7 @@ import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
+import { Eye, Handshake, Layers, Hash, AlertTriangle, Zap, Gamepad2, Check, X } from 'lucide-react'
 import { GameData as GameDataType, DisengagementEvent } from '../SessionDetailPage'
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
@@ -54,12 +55,12 @@ function ScoreBar({ score, max = 10, color = 'bg-seed-teal', delay = 0 }: {
 }
 
 function ModuleCard({ title, icon, children }: {
-  title: string; icon: string; children: React.ReactNode
+  title: string; icon: React.ReactNode; children: React.ReactNode
 }) {
   return (
     <div className="seed-card space-y-4">
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-        <span className="text-xl">{icon}</span>
+        <span className="text-seed-teal">{icon}</span>
         <h3 className="font-semibold text-seed-dark">{title}</h3>
       </div>
       {children}
@@ -91,7 +92,9 @@ function AccuracyTooltip({ active, payload, label }: {
     <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs shadow">
       <p className="font-medium text-seed-dark">Trial {label}</p>
       <p className={payload[0].value ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>
-        {payload[0].value ? '✓ Correct' : '✗ Incorrect'}
+        {payload[0].value
+          ? <><Check size={11} className="inline mr-0.5" />Correct</>
+          : <><X size={11} className="inline mr-0.5" />Incorrect</>}
       </p>
     </div>
   )
@@ -101,7 +104,7 @@ function AccuracyTooltip({ active, payload, label }: {
 
 function Module1({ m }: { m: GameDataType['module1'] }) {
   return (
-    <ModuleCard title="Module 1 — Gaze Tracking" icon="👁">
+    <ModuleCard title="Module 1 — Gaze Tracking" icon={<Eye size={18} />}>
       <div className="grid grid-cols-3 gap-4 pb-3 border-b border-slate-50">
         <StatBadge value={m.accuracy_pct.toFixed(1)} unit="%" label="Accuracy" />
         <StatBadge value={m.mean_reaction_ms.toLocaleString()} unit="ms" label="Mean reaction" />
@@ -133,7 +136,7 @@ function Module1({ m }: { m: GameDataType['module1'] }) {
 
 function Module2({ m }: { m: GameDataType['module2'] }) {
   return (
-    <ModuleCard title="Module 2 — Peer Imitation" icon="🤝">
+    <ModuleCard title="Module 2 — Peer Imitation" icon={<Handshake size={18} />}>
       <div className="grid grid-cols-2 gap-4 pb-3 border-b border-slate-50">
         <StatBadge value={m.accuracy_pct.toFixed(1)} unit="%" label="Accuracy" />
         <StatBadge value={m.mean_latency_ms.toLocaleString()} unit="ms" label="Mean latency" />
@@ -165,7 +168,7 @@ function Module2({ m }: { m: GameDataType['module2'] }) {
 
 function Module3({ m }: { m: GameDataType['module3'] }) {
   return (
-    <ModuleCard title="Module 3 — Sort Task" icon="🔵">
+    <ModuleCard title="Module 3 — Sort Task" icon={<Layers size={18} />}>
       <div className="space-y-3">
         <div>
           <div className="flex items-center justify-between mb-1">
@@ -190,8 +193,8 @@ function Module3({ m }: { m: GameDataType['module3'] }) {
         <div className="flex items-center justify-between pt-1">
           <span className="text-sm text-seed-dark">Restricted interest pattern</span>
           {m.fixation_pattern_flag ? (
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700">
-              ⚠ Detected
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 inline-flex items-center gap-1">
+              <AlertTriangle size={11} />Detected
             </span>
           ) : (
             <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
@@ -208,7 +211,7 @@ function Module3({ m }: { m: GameDataType['module3'] }) {
 
 function Module4({ m }: { m: GameDataType['module4'] }) {
   return (
-    <ModuleCard title="Module 4 — Sequence Following" icon="🔢">
+    <ModuleCard title="Module 4 — Sequence Following" icon={<Hash size={18} />}>
       <div className="grid grid-cols-3 gap-3 pb-3 border-b border-slate-50">
         <StatBadge value={m.accuracy_pct.toFixed(1)} unit="%" label="Accuracy" />
         <StatBadge value={m.flexibility_score.toFixed(1)} unit="/10" label="Flexibility" />
@@ -298,7 +301,7 @@ function OverallSection({ o }: { o: GameDataType['overall'] }) {
               <div key={i}
                 className="flex items-center gap-3 text-sm bg-amber-50 border
                             border-amber-100 rounded-xl px-3 py-2.5">
-                <span className="text-amber-500 flex-shrink-0">⚡</span>
+                <Zap size={15} className="text-amber-500 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-seed-dark truncate">{ev.module}</p>
                   <p className="text-xs text-seed-muted">
@@ -328,7 +331,7 @@ export function GameData({ data, sessionType }: GameDataProps) {
   if (!hasGame) {
     return (
       <div className="seed-card py-12 text-center">
-        <p className="text-3xl mb-2">🎮</p>
+        <div className="flex justify-center mb-2"><Gamepad2 className="text-seed-muted" size={32} /></div>
         <p className="font-medium text-seed-dark mb-1">No game data</p>
         <p className="text-sm text-seed-muted">
           This session did not include Buddy's World.

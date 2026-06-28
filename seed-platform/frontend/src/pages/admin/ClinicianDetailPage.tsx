@@ -11,6 +11,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Sprout, Search, Check } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer, ReferenceLine,
@@ -201,7 +202,7 @@ function PatientsTab({ patients }: { patients: MockPatient[] }) {
   if (patients.length === 0) {
     return (
       <div className="seed-card py-14 text-center">
-        <p className="text-3xl mb-3">🌱</p>
+        <div className="flex justify-center mb-3"><Sprout className="text-seed-teal" size={32} /></div>
         <p className="font-semibold text-seed-dark">No patients assigned</p>
       </div>
     )
@@ -384,7 +385,7 @@ function InviteCodesTab({ codes: initialCodes }: {
                             : 'border-slate-200 text-seed-muted hover:border-seed-teal/50 hover:text-seed-teal'
                         }`}
                       >
-                        {copied === c.code ? '✓ Copied' : 'Copy'}
+                        {copied === c.code ? <><Check size={12} className="inline mr-0.5" />Copied</> : 'Copy'}
                       </button>
                       {c.status === 'ACTIVE' && (
                         <button
@@ -427,7 +428,7 @@ export function ClinicianDetailPage() {
     return (
       <div className="p-6 text-center">
         <div className="seed-card max-w-sm mx-auto py-14">
-          <p className="text-3xl mb-3">🔍</p>
+          <div className="flex justify-center mb-3"><Search className="text-seed-muted" size={32} /></div>
           <h2 className="font-bold text-seed-dark mb-2">Clinician not found</h2>
           <Link to="/admin/clinicians"
             className="seed-btn-primary inline-block text-sm px-4 py-2 mt-2">

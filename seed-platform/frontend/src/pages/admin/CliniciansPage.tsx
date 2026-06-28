@@ -11,6 +11,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Check, AlertTriangle, Search } from 'lucide-react'
 import {
   MOCK_CLINICIANS, pendingCount, overduePendingCount, totalScreenings,
 } from './mockClinicians'
@@ -254,7 +255,7 @@ export function CliniciansPage() {
                        transition-all duration-300 ${
         toast.visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
       }`}>
-        <span className="text-emerald-400 font-bold">✓</span>
+        <Check size={14} className="text-emerald-400" />
         {toast.message}
       </div>
 
@@ -305,7 +306,7 @@ export function CliniciansPage() {
         {clinicians.some(c => overduePendingCount(c) > 0) && (
           <div className="flex items-start gap-2 bg-red-50 border border-red-200
                           rounded-xl px-4 py-3 text-sm text-red-800">
-            <span className="text-red-500 flex-shrink-0 mt-0.5">⚠</span>
+            <AlertTriangle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
             <p>
               <strong>{clinicians.reduce((s, c) => s + overduePendingCount(c), 0)} overdue reviews</strong>{' '}
               across {clinicians.filter(c => overduePendingCount(c) > 0).length} clinicians
@@ -420,7 +421,7 @@ export function CliniciansPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-16 text-center">
-                      <p className="text-3xl mb-3">🔍</p>
+                      <div className="flex justify-center mb-3"><Search className="text-seed-muted" size={28} /></div>
                       <p className="font-semibold text-seed-dark">No clinicians found</p>
                       <p className="text-sm text-seed-muted mt-1">No results for "{query}"</p>
                     </td>

@@ -8,6 +8,7 @@
  */
 
 import { useNavigate } from 'react-router-dom'
+import { TrendingUp, TrendingDown, Minus, ArrowUp, BarChart2 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceArea, ResponsiveContainer,
@@ -93,7 +94,7 @@ function ChartTooltip({
       </p>
       <p className="text-seed-muted text-xs mt-0.5">{TIER_LABEL[pt.tier] ?? pt.tier}</p>
       {pt.isCurrent && (
-        <p className="text-xs text-seed-teal font-semibold mt-1">↑ Current session</p>
+        <p className="text-xs text-seed-teal font-semibold mt-1 flex items-center gap-0.5"><ArrowUp size={11} />Current session</p>
       )}
       {!pt.isCurrent && (
         <p className="text-xs text-slate-400 mt-1">Click to open session</p>
@@ -194,7 +195,7 @@ export function TrajectoryTab({ detail }: TrajectoryTabProps) {
   if (data.length < 2) {
     return (
       <div className="seed-card py-14 text-center">
-        <p className="text-3xl mb-3">📈</p>
+        <div className="flex justify-center mb-3"><BarChart2 className="text-seed-muted" size={32} /></div>
         <h3 className="font-semibold text-seed-dark mb-1">Not enough data</h3>
         <p className="text-sm text-seed-muted">
           At least 2 completed sessions are required to display a trajectory.
@@ -207,7 +208,8 @@ export function TrajectoryTab({ detail }: TrajectoryTabProps) {
   const first = data[0].score
   const last  = data[data.length - 1].score
   const delta = last - first
-  const trendLabel = delta > 3 ? '↑ Increasing concern' : delta < -3 ? '↓ Improving trend' : '→ Stable'
+  const trendIcon  = delta > 3 ? <TrendingUp size={13} /> : delta < -3 ? <TrendingDown size={13} /> : <Minus size={13} />
+  const trendText  = delta > 3 ? 'Increasing concern' : delta < -3 ? 'Improving trend' : 'Stable'
   const trendColor = delta > 3 ? 'text-red-600' : delta < -3 ? 'text-emerald-600' : 'text-amber-600'
 
   return (
@@ -217,7 +219,7 @@ export function TrajectoryTab({ detail }: TrajectoryTabProps) {
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-seed-dark">Development Trajectory</h3>
           <div className="flex items-center gap-4">
-            <span className={`text-xs font-semibold ${trendColor}`}>{trendLabel}</span>
+            <span className={`text-xs font-semibold flex items-center gap-1 ${trendColor}`}>{trendIcon}{trendText}</span>
             <span className="text-xs text-seed-muted">
               {data.length} sessions · Click non-current points to navigate
             </span>

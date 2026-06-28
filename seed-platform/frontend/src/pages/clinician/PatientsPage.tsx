@@ -8,6 +8,7 @@
 
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 import { calculateAge, formatDate } from '@/utils/age'
 import { MOCK_PATIENTS, latestSession, MockRiskTier } from './mockPatients'
@@ -31,7 +32,7 @@ function EmptyState({ query }: { query: string }) {
   return (
     <tr>
       <td colSpan={7} className="py-16 text-center">
-        <p className="text-3xl mb-3">🔍</p>
+        <div className="flex justify-center mb-3"><Search className="text-seed-muted" size={28} /></div>
         <p className="font-semibold text-seed-dark">No patients found</p>
         <p className="text-sm text-seed-muted mt-1">
           {query

@@ -18,6 +18,7 @@
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, X, Sprout, Search } from 'lucide-react'
 import { useParentStore } from '@/stores/parentStore'
 import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 import { formatDate, durationMinutes } from '@/utils/age'
@@ -91,7 +92,7 @@ function Th({
       >
         {label}
         <span className={`text-[10px] ${active ? 'text-seed-teal' : 'text-slate-300'}`}>
-          {active ? (sort.dir === 'asc' ? '↑' : '↓') : '↕'}
+          {active ? (sort.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronsUpDown size={12} />}
         </span>
       </button>
     </th>
@@ -123,7 +124,7 @@ function Pagination({
                    hover:border-seed-teal/50 disabled:opacity-40 disabled:cursor-not-allowed
                    transition-all"
       >
-        ←
+        <ChevronLeft size={16} />
       </button>
 
       {pageNumbers(current, total).map((p, i) =>
@@ -151,7 +152,7 @@ function Pagination({
                    hover:border-seed-teal/50 disabled:opacity-40 disabled:cursor-not-allowed
                    transition-all"
       >
-        →
+        <ChevronRight size={16} />
       </button>
     </div>
   )
@@ -342,9 +343,9 @@ export function HistoryPage() {
           <button
             onClick={resetFilters}
             className="text-xs font-medium text-seed-muted hover:text-seed-alert
-                       transition-colors"
+                       transition-colors inline-flex items-center gap-1"
           >
-            ✕ Reset filters
+            <X size={12} />Reset filters
           </button>
         )}
       </div>
@@ -363,7 +364,7 @@ export function HistoryPage() {
       {/* No sessions at all */}
       {totalForChild === 0 && (
         <div className="seed-card py-14 text-center">
-          <p className="text-3xl mb-3">🌱</p>
+          <div className="flex justify-center mb-3"><Sprout className="text-seed-teal" size={28} /></div>
           <h3 className="font-semibold text-seed-dark mb-1">No screenings yet</h3>
           <p className="text-sm text-seed-muted mb-4">
             Complete your first screening to see history here.
@@ -377,7 +378,7 @@ export function HistoryPage() {
       {/* No results matching filters */}
       {totalForChild > 0 && processed.length === 0 && (
         <div className="seed-card py-12 text-center">
-          <p className="text-2xl mb-2">🔍</p>
+          <div className="flex justify-center mb-2"><Search className="text-seed-muted" size={28} /></div>
           <h3 className="font-semibold text-seed-dark mb-1">No matching sessions</h3>
           <p className="text-sm text-seed-muted mb-4">
             Try adjusting or removing the active filters.

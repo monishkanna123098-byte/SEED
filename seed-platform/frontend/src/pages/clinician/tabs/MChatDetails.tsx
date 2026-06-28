@@ -12,6 +12,7 @@
  * licensed copy before production deployment.
  */
 
+import { Star, ClipboardList } from 'lucide-react'
 import { MCHAT_ITEMS } from '@/components/MChatQuestionnaire'
 import { MChatData } from '../SessionDetailPage'
 
@@ -36,7 +37,7 @@ const BAND_CONFIG: Record<RiskBand, { label: string; bg: string; text: string; b
 function EmptyState() {
   return (
     <div className="seed-card py-12 text-center">
-      <p className="text-3xl mb-2">📋</p>
+      <div className="flex justify-center mb-2"><ClipboardList className="text-seed-muted" size={32} /></div>
       <p className="font-medium text-seed-dark mb-1">M-CHAT-R not completed</p>
       <p className="text-sm text-seed-muted">
         No questionnaire data is available for this session.
@@ -76,7 +77,7 @@ export function MChatDetails({ data }: MChatDetailsProps) {
           </h3>
           <p className="text-xs text-seed-muted mt-0.5">
             Items marked{' '}
-            <span className="font-bold text-amber-600">★ Critical</span>{' '}
+            <span className="inline-flex items-center gap-0.5 font-bold text-amber-600"><Star size={11} className="fill-amber-500 text-amber-500" />Critical</span>{' '}
             are reverse-scored (YES = at-risk).
           </p>
         </div>
@@ -111,7 +112,9 @@ export function MChatDetails({ data }: MChatDetailsProps) {
                     <td className="px-4 py-3 text-center align-top w-10">
                       <span className="text-sm font-bold text-seed-dark">{item.id}</span>
                       {isCritical && (
-                        <div className="text-[10px] font-bold text-amber-600 mt-0.5">★</div>
+                        <div className="flex justify-center mt-0.5">
+                          <Star size={10} className="fill-amber-500 text-amber-500" />
+                        </div>
                       )}
                     </td>
 

@@ -14,6 +14,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { AlertTriangle } from 'lucide-react'
 import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 import { calculateAge, formatDate } from '@/utils/age'
 import { api } from '@/utils/api'
@@ -327,7 +328,7 @@ function SessionHeader({ detail }: { detail: SessionDetail }) {
       {/* Divergence warning banner */}
       {session.divergenceFlag && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-start gap-2">
-          <span className="text-amber-500 text-base flex-shrink-0 mt-0.5">⚠</span>
+          <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800 font-medium">
             Parent questionnaire and behavioral data diverge by{' '}
             <strong>{session.divergencePercent ?? '—'}%</strong>.

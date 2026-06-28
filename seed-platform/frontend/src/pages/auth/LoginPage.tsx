@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Mail } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { ROLE_HOME } from '@/components/RouteGuards'
 import { SEEDLogo } from '@/components/SEEDLogo'
@@ -69,7 +70,7 @@ export const LoginPage: React.FC = () => {
           >
             <div className="seed-card text-center">
               <div className="w-16 h-16 bg-seed-amber/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">✉️</span>
+                <Mail className="text-seed-amber" size={28} />
               </div>
               <h2 className="text-xl font-bold text-seed-dark mb-2">Verify your email</h2>
               <p className="text-seed-muted text-sm mb-6">

@@ -12,6 +12,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { AlertTriangle, CheckCircle, Microscope, Calendar, PenLine, ArrowRight } from 'lucide-react'
 import {
   useClinicianStore,
   PendingReview,
@@ -65,7 +66,7 @@ const TIER_WEIGHT: Record<string, number> = {
 function DivergenceWarning() {
   return (
     <div className="relative group inline-flex items-center">
-      <span className="text-amber-500 cursor-help select-none text-base">⚠</span>
+      <AlertTriangle size={16} className="text-amber-500 cursor-help" />
       <div
         className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2
                    mb-2 w-60 rounded-xl bg-seed-dark text-white text-xs px-3 py-2
@@ -141,7 +142,7 @@ function PendingQueue() {
       {/* Empty */}
       {!isLoadingPending && sorted.length === 0 && (
         <div className="py-12 text-center">
-          <p className="text-2xl mb-2">✅</p>
+          <div className="flex justify-center mb-2"><CheckCircle className="text-seed-mint" size={28} /></div>
           <p className="text-sm font-medium text-seed-dark mb-1">All caught up</p>
           <p className="text-xs text-seed-muted">No sessions awaiting review.</p>
         </div>
@@ -226,7 +227,7 @@ function PendingQueue() {
             className="text-xs font-medium text-seed-teal hover:text-seed-navy
                        transition-colors"
           >
-            View all pending reviews →
+            View all pending reviews <ArrowRight size={12} className="inline ml-0.5" />
           </Link>
         </div>
       )}
@@ -236,11 +237,11 @@ function PendingQueue() {
 
 // ─── Activity feed ────────────────────────────────────────────────────────────
 
-const ACTIVITY_ICON: Record<ActivityType, { emoji: string; bg: string }> = {
-  new_screening:      { emoji: '🔬', bg: 'bg-blue-50'    },
-  review_completed:   { emoji: '✅', bg: 'bg-emerald-50' },
-  referral_scheduled: { emoji: '📅', bg: 'bg-amber-50'   },
-  override_applied:   { emoji: '✏️', bg: 'bg-purple-50'  },
+const ACTIVITY_ICON: Record<ActivityType, { icon: React.ReactNode; bg: string; color: string }> = {
+  new_screening:      { icon: <Microscope size={15} />,  bg: 'bg-blue-50',     color: 'text-blue-600'    },
+  review_completed:   { icon: <CheckCircle size={15} />, bg: 'bg-emerald-50',  color: 'text-emerald-600' },
+  referral_scheduled: { icon: <Calendar   size={15} />,  bg: 'bg-amber-50',    color: 'text-amber-600'   },
+  override_applied:   { icon: <PenLine    size={15} />,  bg: 'bg-purple-50',   color: 'text-purple-600'  },
 }
 
 const ACTIVITY_TEXT: Record<ActivityType, string> = {
@@ -271,9 +272,9 @@ function ActivityFeed() {
               className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50/60
                           transition-colors duration-100"
             >
-              <div className={`w-8 h-8 rounded-full ${cfg.bg} flex items-center
-                                justify-center flex-shrink-0 text-base mt-0.5`}>
-                {cfg.emoji}
+              <div className={`w-8 h-8 rounded-full ${cfg.bg} ${cfg.color} flex items-center
+                                justify-center flex-shrink-0 mt-0.5`}>
+                {cfg.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-seed-dark">

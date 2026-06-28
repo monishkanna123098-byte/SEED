@@ -12,6 +12,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Sprout, Baby, Check, AlertTriangle } from 'lucide-react'
 import { useParentStore } from '@/stores/parentStore'
 import { calculateAge } from '@/utils/age'
 import { api, extractApiError } from '@/utils/api'
@@ -58,10 +59,10 @@ function validateDob(dob: string): AgeValidation | null {
 
 type GenderValue = 'MALE' | 'FEMALE' | 'PREFER_NOT_TO_SAY'
 
-const GENDER_OPTIONS: { value: GenderValue; label: string; emoji: string }[] = [
-  { value: 'MALE', label: 'Boy', emoji: '👦' },
-  { value: 'FEMALE', label: 'Girl', emoji: '👧' },
-  { value: 'PREFER_NOT_TO_SAY', label: 'Prefer not to say', emoji: '🧒' },
+const GENDER_OPTIONS: { value: GenderValue; label: string; icon: React.ReactNode }[] = [
+  { value: 'MALE',              label: 'Boy',              icon: <Baby size={20} /> },
+  { value: 'FEMALE',            label: 'Girl',             icon: <Baby size={20} /> },
+  { value: 'PREFER_NOT_TO_SAY', label: 'Prefer not to say', icon: <Baby size={20} /> },
 ]
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ export function AddChildPage() {
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-1">
-              <span className="text-3xl">🌱</span>
+              <Sprout size={28} className="text-seed-teal" />
               <h1 className="text-2xl font-bold text-seed-dark">Add Child Profile</h1>
             </div>
             <p className="text-seed-muted text-sm">
@@ -211,7 +212,7 @@ export function AddChildPage() {
                       }`}
                     >
                       <span className="flex-shrink-0 mt-0.5">
-                        {ageValidation.inRange ? '✓' : '⚠'}
+                        {ageValidation.inRange ? <Check size={14} /> : <AlertTriangle size={14} />}
                       </span>
                       <span>
                         {ageValidation.inRange ? (
@@ -247,7 +248,7 @@ export function AddChildPage() {
                                       : 'border-slate-200 bg-white text-seed-dark hover:border-seed-teal/50'
                                   }`}
                     >
-                      <span>{opt.emoji}</span>
+                      <span className="text-seed-teal">{opt.icon}</span>
                       <span>{opt.label}</span>
                     </button>
                   ))}

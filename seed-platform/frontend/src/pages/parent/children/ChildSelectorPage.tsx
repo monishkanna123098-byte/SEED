@@ -9,6 +9,7 @@
 
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Sprout } from 'lucide-react'
 import { useParentStore } from '@/stores/parentStore'
 import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 import { calculateAge, formatDate } from '@/utils/age'
@@ -50,7 +51,7 @@ export function ChildSelectorPage() {
     return (
       <div className="min-h-screen bg-seed-ice flex items-center justify-center px-4">
         <div className="seed-card max-w-sm w-full text-center">
-          <p className="text-4xl mb-3">🌱</p>
+          <div className="flex justify-center mb-3"><Sprout className="text-seed-teal" size={32} /></div>
           <h1 className="text-lg font-bold text-seed-dark mb-2">No children yet</h1>
           <p className="text-sm text-seed-muted mb-4">
             Add your child's profile to get started.

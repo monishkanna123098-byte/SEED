@@ -18,6 +18,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
+import { Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/utils/api'
 import { formatDate, calculateAge } from '@/utils/age'
@@ -394,7 +395,7 @@ function ReferralLetterModal({
             }`}
           >
             {copied
-              ? <><span>✓</span> Copied!</>
+              ? <><Check size={14} /> Copied!</>
               : <><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.6} className="w-4 h-4">
                   <rect x="5" y="5" width="9" height="9" rx="1.5" />
                   <path d="M11 5V3.5a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" />
@@ -428,7 +429,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
                   rounded-xl shadow-xl flex items-center gap-2 transition-all duration-300
                   ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}
     >
-      <span className="text-seed-mint font-bold">✓</span>
+      <Check size={14} className="text-seed-mint" />
       {message}
     </div>
   )
@@ -674,7 +675,7 @@ export function ReviewPanel({ detail, sessionId }: ReviewPanelProps) {
                   </span>
                 )}
                 {saveStatus === 'saved' && (
-                  <span className="text-xs text-emerald-600 font-semibold">Saved ✓</span>
+                  <span className="text-xs text-emerald-600 font-semibold inline-flex items-center gap-0.5"><Check size={11} />Saved</span>
                 )}
               </div>
             </div>

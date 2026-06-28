@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { CheckCircle, AlertTriangle, Circle } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -386,7 +387,7 @@ function ErrorLog() {
             {visible.length === 0 && (
               <tr>
                 <td colSpan={5} className="py-12 text-center text-sm text-seed-muted">
-                  <p className="text-2xl mb-2">✅</p>
+                  <div className="flex justify-center mb-2"><CheckCircle className="text-seed-mint" size={28} /></div>
                   No open errors to display.
                 </td>
               </tr>
@@ -504,7 +505,7 @@ export function SystemHealthPage() {
       {!ANALYSIS_ENGINE_URL && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200
                         rounded-xl px-4 py-3 text-sm text-amber-800">
-          <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠</span>
+          <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p>
             <strong>VITE_ANALYSIS_ENGINE_URL</strong> is not set in your environment.
             Analysis Engine health checks will show the last known state.
@@ -582,7 +583,7 @@ export function SystemHealthPage() {
           icon={<Ico d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />}>
           {services.redis.status === 'down' ? (
             <div className="flex items-center gap-2 text-red-600">
-              <span className="text-base">🔴</span>
+              <Circle size={14} className="fill-red-500 text-red-500" />
               <span className="text-sm font-semibold">Unreachable</span>
             </div>
           ) : (

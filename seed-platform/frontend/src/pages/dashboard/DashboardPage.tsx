@@ -1,5 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Sprout } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { SEEDLogo } from '@/components/SEEDLogo'
 import { Disclaimer } from '@/components/Disclaimer'
@@ -30,7 +31,7 @@ export const DashboardPage: React.FC = () => {
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="seed-card max-w-lg w-full text-center">
-          <div className="text-4xl mb-4">🌱</div>
+          <div className="flex justify-center mb-4"><Sprout className="text-seed-teal" size={36} /></div>
           <h1 className="text-2xl font-bold text-seed-dark mb-2">
             Welcome, {user?.name?.split(' ')[0]}
           </h1>

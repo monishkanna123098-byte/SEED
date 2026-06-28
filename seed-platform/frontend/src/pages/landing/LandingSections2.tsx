@@ -13,6 +13,7 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
 
 const C = {
   navy:  '#065A82',
@@ -233,7 +234,7 @@ export function AudienceSection() {
                          hover:bg-seed-navy transition-all duration-200
                          hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
             >
-              Register as a Parent →
+              Register as a Parent <ArrowRight size={14} className="inline ml-1" />
             </Link>
           </motion.div>
 
@@ -276,7 +277,7 @@ export function AudienceSection() {
                 color: 'white',
               }}
             >
-              Register as a Clinician →
+              Register as a Clinician <ArrowRight size={14} className="inline ml-1" />
             </Link>
           </motion.div>
         </div>

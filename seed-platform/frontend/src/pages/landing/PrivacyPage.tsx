@@ -10,6 +10,7 @@
  */
 
 import { Link } from 'react-router-dom'
+import { ChevronLeft, ArrowRight } from 'lucide-react'
 import { LandingHeader } from './LandingSections'
 import { LandingFooter } from './LandingSections2'
 
@@ -319,15 +320,15 @@ export function PrivacyPage() {
           <Link
             to="/"
             className="text-sm text-seed-teal font-medium hover:text-seed-navy
-                       transition-colors"
+                       transition-colors inline-flex items-center gap-1"
           >
-            ← Back to home
+            <ChevronLeft size={14} />Back to home
           </Link>
           <Link
             to="/terms"
-            className="text-sm text-seed-muted hover:text-seed-teal transition-colors"
+            className="text-sm text-seed-muted hover:text-seed-teal transition-colors inline-flex items-center gap-1"
           >
-            Terms of Use →
+            Terms of Use<ArrowRight size={14} />
           </Link>
         </div>
       </main>

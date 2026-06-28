@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { SessionDetail } from '../SessionDetailPage'
 import { calculateAge, formatDate } from '@/utils/age'
 
@@ -169,11 +170,11 @@ function buildRawValues(detail: SessionDetail): Array<{ label: string; value: st
     { label: 'B3 Restricted interests',  value: `${criterionB.b3.score} / ${criterionB.b3.max}` },
     { label: 'B4 Sensory reactivity',    value: `${criterionB.b4.score} / ${criterionB.b4.max}` },
     { label: '─── Behavioral Metrics ─', value: '' },
-    { label: 'Gaze score',               value: `${metrics.gaze.score} / 10  (z = ${metrics.gaze.zscore})  ${metrics.gaze.flag ? '⚑ Flagged' : ''}` },
-    { label: 'Reaction score',           value: `${metrics.reaction.score} / 10  (z = ${metrics.reaction.zscore})  ${metrics.reaction.flag ? '⚑ Flagged' : ''}` },
-    { label: 'Touch precision',          value: `${metrics.precision.score} / 10  ${metrics.precision.flag ? '⚑ Flagged' : ''}` },
-    { label: 'Imitation score',          value: `${metrics.imitation.score} / 10  (z = ${metrics.imitation.zscore})  ${metrics.imitation.flag ? '⚑ Flagged' : ''}` },
-    { label: 'Engagement score',         value: `${metrics.engagement.score} / 10  (z = ${metrics.engagement.zscore})  ${metrics.engagement.flag ? '⚑ Flagged' : ''}` },
+    { label: 'Gaze score',               value: `${metrics.gaze.score} / 10  (z = ${metrics.gaze.zscore})  ${metrics.gaze.flag ? '[Flagged]' : ''}` },
+    { label: 'Reaction score',           value: `${metrics.reaction.score} / 10  (z = ${metrics.reaction.zscore})  ${metrics.reaction.flag ? '[Flagged]' : ''}` },
+    { label: 'Touch precision',          value: `${metrics.precision.score} / 10  ${metrics.precision.flag ? '[Flagged]' : ''}` },
+    { label: 'Imitation score',          value: `${metrics.imitation.score} / 10  (z = ${metrics.imitation.zscore})  ${metrics.imitation.flag ? '[Flagged]' : ''}` },
+    { label: 'Engagement score',         value: `${metrics.engagement.score} / 10  (z = ${metrics.engagement.zscore})  ${metrics.engagement.flag ? '[Flagged]' : ''}` },
   ]
 
   if (mchatData) {
@@ -201,7 +202,7 @@ function SummaryPara({ para }: { para: SummaryParagraph }) {
   return (
     <p className={`text-sm leading-relaxed ${styles[para.variant]}`}>
       {para.variant === 'warning' && (
-        <span className="font-bold mr-1">⚠</span>
+        <AlertTriangle size={13} className="inline mr-1 text-amber-600" aria-hidden="true" />
       )}
       {para.text}
     </p>

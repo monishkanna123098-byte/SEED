@@ -180,7 +180,7 @@ export const MOCK_ACTIVITY: ActivityEntry[] = [
     type: 'override_applied',
     childName: 'Ananya D.',
     timestamp: '2025-06-08T10:05:00Z',
-    detail: 'Tier adjusted: ELEVATED → INDETERMINATE',
+    detail: 'Tier adjusted: ELEVATED to INDETERMINATE',
   },
   {
     id: 'act-09',

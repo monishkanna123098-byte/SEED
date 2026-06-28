@@ -30,6 +30,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import {
   MOCK_CLINICIANS,
@@ -270,7 +271,7 @@ function ExportCard({
         <ul className="space-y-1">
           {contents.map(c => (
             <li key={c} className="flex items-start gap-2 text-xs text-seed-muted">
-              <span className="text-seed-teal mt-0.5 flex-shrink-0">✓</span>
+              <Check size={12} className="text-seed-teal mt-0.5 flex-shrink-0" />
               {c}
             </li>
           ))}

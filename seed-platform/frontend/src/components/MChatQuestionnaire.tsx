@@ -22,6 +22,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronLeft } from 'lucide-react'
 import { api, extractApiError } from '@/utils/api'
 import { Disclaimer } from '@/components/Disclaimer'
 
@@ -537,7 +538,7 @@ export const MChatQuestionnaire: React.FC<MChatQuestionnaireProps> = ({
                   className="mt-4 text-sm text-seed-muted hover:text-seed-dark
                              transition-colors underline underline-offset-2"
                 >
-                  ← Back to previous question
+                  <ChevronLeft size={14} className="inline mr-0.5" />Back to previous question
                 </button>
               )}
 

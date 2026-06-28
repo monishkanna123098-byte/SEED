@@ -7,6 +7,7 @@
  */
 
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Sprout, AlertTriangle } from 'lucide-react'
 import { RiskTierBadge } from '@/components/parent/RiskTierBadge'
 import { calculateAge, formatDate } from '@/utils/age'
 import { MOCK_PATIENTS } from './mockPatients'
@@ -269,7 +270,7 @@ export function PatientDetailPage() {
     return (
       <div className="p-6 text-center">
         <div className="seed-card max-w-sm mx-auto py-14">
-          <p className="text-3xl mb-3">🌱</p>
+          <div className="flex justify-center mb-3"><Sprout className="text-seed-teal" size={28} /></div>
           <h2 className="font-bold text-seed-dark mb-2">Patient not found</h2>
           <p className="text-sm text-seed-muted mb-4">
             No patient with ID "{childId}" is assigned to you.
@@ -309,7 +310,7 @@ export function PatientDetailPage() {
         {pendingCount > 0 && (
           <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200
                           rounded-xl px-4 py-3">
-            <span className="text-amber-500 text-base flex-shrink-0">⚠</span>
+            <AlertTriangle size={15} className="text-amber-500 flex-shrink-0" />
             <p className="text-sm text-amber-800">
               <strong>{pendingCount} session{pendingCount !== 1 ? 's' : ''}</strong> pending
               clinical review. Click each session to open the review panel.

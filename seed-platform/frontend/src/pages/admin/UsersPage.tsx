@@ -12,6 +12,11 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Check, ChevronUp, ChevronDown, ChevronsUpDown,
+  ChevronLeft, ChevronRight, User, Lock, Unlock, KeyRound,
+  Trash2, AlertTriangle, CheckCircle, Search, X,
+} from 'lucide-react'
 import { MOCK_USERS }    from './mockUsers'
 import type { AdminUser, UserRole } from './mockUsers'
 import { formatDate }    from '@/utils/age'
@@ -82,7 +87,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
                      transition-all duration-300 ${
       visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
     }`}>
-      <span className="text-emerald-400 font-bold">✓</span>
+      <Check size={14} className="text-emerald-400" />
       {message}
     </div>
   )
@@ -127,7 +132,7 @@ function SortTH({
       <span className="inline-flex items-center gap-1">
         {label}
         <span className={`text-[10px] ${active ? 'text-seed-teal' : 'text-slate-300'}`}>
-          {active ? (dir === 'asc' ? '↑' : '↓') : '↕'}
+          {active ? (dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronsUpDown size={12} />}
         </span>
       </span>
     </th>
@@ -150,7 +155,7 @@ function Pagination({ page, total, onChange }: {
                    hover:border-seed-teal/50 hover:text-seed-teal transition-colors
                    disabled:opacity-30 disabled:cursor-not-allowed"
       >
-        ← Prev
+        <ChevronLeft size={14} />
       </button>
       {range.map((r, i) =>
         r === '…'
@@ -176,7 +181,7 @@ function Pagination({ page, total, onChange }: {
                    hover:border-seed-teal/50 hover:text-seed-teal transition-colors
                    disabled:opacity-30 disabled:cursor-not-allowed"
       >
-        Next →
+        <ChevronRight size={14} />
       </button>
     </div>
   )
@@ -207,12 +212,12 @@ function ActionMenu({
   }, [open, onClose])
 
   const items = [
-    { label: 'View Profile',           icon: '👤', action: onViewProfile,    cls: 'text-seed-dark' },
+    { label: 'View Profile',           icon: <User     size={14} />, action: onViewProfile,    cls: 'text-seed-dark' },
     { label: user.isActive ? 'Suspend' : 'Reactivate',
-                                        icon: user.isActive ? '🔒' : '🔓',
+                                        icon: user.isActive ? <Lock size={14} /> : <Unlock size={14} />,
                                                    action: onSuspend,         cls: user.isActive ? 'text-amber-700' : 'text-emerald-700' },
-    { label: 'Reset Password',          icon: '🔑', action: onResetPassword,  cls: 'text-blue-700' },
-    { label: 'Delete Account',          icon: '🗑', action: onDeleteRequest,  cls: 'text-red-600'  },
+    { label: 'Reset Password',          icon: <KeyRound size={14} />, action: onResetPassword,  cls: 'text-blue-700' },
+    { label: 'Delete Account',          icon: <Trash2   size={14} />, action: onDeleteRequest,  cls: 'text-red-600'  },
   ]
 
   return (
@@ -244,7 +249,7 @@ function ActionMenu({
                 className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm
                              hover:bg-slate-50 transition-colors text-left ${cls}`}
               >
-                <span className="text-sm">{icon}</span>
+                <span className="flex-shrink-0">{icon}</span>
                 {label}
               </button>
             ))}
@@ -518,7 +523,7 @@ function AddUserModal({
             {/* Success header */}
             <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl
                             border border-emerald-200">
-              <span className="text-xl">✅</span>
+              <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
               <div>
                 <p className="font-semibold text-emerald-800 text-sm">Account created</p>
                 <p className="text-xs text-emerald-700">{newUser?.name} · {newUser?.email}</p>
@@ -544,14 +549,14 @@ function AddUserModal({
                       : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                   }`}
                 >
-                  {copied ? '✓ Copied' : 'Copy'}
+                  {copied ? <><Check size={12} className="inline mr-0.5" />Copied</> : 'Copy'}
                 </button>
               </div>
             </div>
 
             <div className="flex items-start gap-2 text-xs text-amber-800
                             bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-200">
-              <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠</span>
+              <AlertTriangle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
               <p>
                 This password cannot be retrieved after closing this window.
                 Share it with the user through a secure channel.
@@ -597,7 +602,7 @@ function DeleteConfirmModal({
 
         <div className="px-6 py-5 space-y-4">
           <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
-            <span className="text-red-500 mt-0.5 flex-shrink-0">⚠</span>
+            <AlertTriangle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
             <div className="text-sm">
               <p className="font-semibold text-red-800">{user.name}</p>
               <p className="text-red-700 text-xs mt-0.5">
@@ -716,7 +721,7 @@ function UserTable({
             <button onClick={() => setQuery('')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400
                          hover:text-seed-dark">
-              ✕
+              <X size={14} />
             </button>
           )}
         </div>
@@ -744,7 +749,7 @@ function UserTable({
                        focus:ring-1 focus:ring-seed-teal/30 w-36"
             title="From date"
           />
-          <span className="text-slate-400 text-xs">→</span>
+          <ChevronRight size={14} className="text-slate-400" />
           <input
             type="date" value={dateTo}
             onChange={e => setDateTo(e.target.value)}
@@ -788,7 +793,7 @@ function UserTable({
             {paginated.length === 0 ? (
               <tr>
                 <td colSpan={showScreeningCol ? 7 : 6} className="py-16 text-center">
-                  <p className="text-3xl mb-3">🔍</p>
+                  <div className="flex justify-center mb-3"><Search className="text-seed-muted" size={28} /></div>
                   <p className="font-semibold text-seed-dark">No users found</p>
                   <p className="text-sm text-seed-muted mt-1">
                     {query ? `No results for "${query}"` : 'No users match the current filters.'}
