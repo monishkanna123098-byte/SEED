@@ -86,6 +86,12 @@ const ExportPage = React.lazy(() =>
 const LandingPage = React.lazy(() =>
   import('@/pages/landing/LandingPage').then((m) => ({ default: m.LandingPage }))
 )
+const PrivacyPage = React.lazy(() =>
+  import('@/pages/landing/PrivacyPage').then((m) => ({ default: m.PrivacyPage }))
+)
+const TermsPage = React.lazy(() =>
+  import('@/pages/landing/TermsPage').then((m) => ({ default: m.TermsPage }))
+)
 
 const Spinner = (
   <div className="min-h-screen bg-seed-ice flex items-center justify-center">
@@ -116,6 +122,8 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
 
         {/* Parent dashboard (role = PARENT) */}
         <Route
