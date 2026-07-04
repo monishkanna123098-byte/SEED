@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Stethoscope, Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
@@ -34,7 +34,12 @@ interface InviteStatus {
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { register, validateInviteCode, isLoading, clearError } = useAuthStore()
+
+  // Pre-select CLINICIAN role if ?role=clinician is in the URL (e.g. from landing CTA)
+  const initialRole: RegisterRole =
+    searchParams.get('role')?.toLowerCase() === 'clinician' ? 'CLINICIAN' : 'PARENT'
 
   const [step, setStep] = useState<RegisterStep>('form')
   const [form, setForm] = useState<FormState>({
@@ -42,7 +47,7 @@ export const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'PARENT',
+    role: initialRole,
     inviteCode: '',
   })
   const [errors, setErrors] = useState<FormErrors>({})

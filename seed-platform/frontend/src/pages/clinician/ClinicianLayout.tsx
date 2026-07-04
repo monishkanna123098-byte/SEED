@@ -188,6 +188,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
           className="w-full flex items-center justify-center px-3 py-2 rounded-lg
                      text-white/40 hover:text-white hover:bg-white/10 transition-colors"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
         >
           <Icon name="menu" />
         </button>
@@ -209,6 +210,12 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
 
 // ─── Top bar ──────────────────────────────────────────────────────────────────
 
+/** Strips a leading "Dr." prefix before re-adding it, preventing "Dr. Dr. Name". */
+function formatClinicianName(name: string): string {
+  const stripped = name.replace(/^Dr\.?\s+/i, '').trim()
+  return `Dr. ${stripped}`
+}
+
 function TopBar({ sidebarWidth }: { sidebarWidth: number }) {
   const { user } = useAuthStore()
 
@@ -222,7 +229,7 @@ function TopBar({ sidebarWidth }: { sidebarWidth: number }) {
       <div>
         {user && (
           <p className="text-sm font-semibold text-seed-dark">
-            Dr. {user.name}
+            {formatClinicianName(user.name)}
           </p>
         )}
       </div>

@@ -508,9 +508,10 @@ export const MChatQuestionnaire: React.FC<MChatQuestionnaireProps> = ({
               {!currentItem.example && <div className="mb-6" />}
 
               {/* Yes / No buttons */}
-              <div className="flex gap-3">
+              <div className="flex gap-3" role="group" aria-label={`Answer for question ${currentIndex + 1}`}>
                 <button
                   onClick={() => handleAnswer(true)}
+                  aria-label={`Yes — ${currentItem.text}`}
                   className="flex-1 py-4 rounded-xl text-lg font-bold text-white
                              bg-seed-teal hover:bg-seed-teal/90 active:scale-95
                              transition-all duration-150 focus-visible:ring-2
@@ -521,6 +522,7 @@ export const MChatQuestionnaire: React.FC<MChatQuestionnaireProps> = ({
                 </button>
                 <button
                   onClick={() => handleAnswer(false)}
+                  aria-label={`No — ${currentItem.text}`}
                   className="flex-1 py-4 rounded-xl text-lg font-bold text-white
                              bg-seed-navy hover:bg-seed-navy/90 active:scale-95
                              transition-all duration-150 focus-visible:ring-2

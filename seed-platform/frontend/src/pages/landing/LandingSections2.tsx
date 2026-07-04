@@ -2,12 +2,6 @@
  * S.E.E.D. Public Landing Page — Part 2 sections
  *
  * Exports: TrustSection | AudienceSection | DisclaimerSection | LandingFooter
- *
- * ⚠ KNOWN COPY ISSUES (must fix before public launch):
- *   - Badge 2 "All data processed on-device" is FALSE — video analysis
- *     runs server-side on FastAPI/MediaPipe. Needs corrected copy.
- *   - Badge 3 "AES-256 encryption" is NOT implemented in the current build.
- *     Aspirational copy only.
  */
 
 import { useRef } from 'react'
@@ -52,8 +46,7 @@ const TRUST_BADGES = [
       </svg>
     ),
     title: 'DPDPA-2023 Compliant',
-    // ⚠ "processed on-device" is inaccurate — video runs server-side. Fix before launch.
-    body: 'Designed around Digital Personal Data Protection Act 2023 requirements. No child data shared with third-party services.',
+    body: 'Designed around India\'s Digital Personal Data Protection Act 2023. No child data shared with third-party services.',
   },
   {
     key: 'privacy',
@@ -66,19 +59,21 @@ const TRUST_BADGES = [
       </svg>
     ),
     title: 'Privacy-First',
-    // ⚠ AES-256 not yet implemented. Aspirational copy only.
     body: 'No child data sent to third-party services. Role-gated access with clinician invite codes required for parent registration.',
   },
   {
-    key: 'clinical',
+    key: 'mchat',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
         className="w-7 h-7">
-        <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"
+          strokeLinecap="round" />
+        <rect x="9" y="3" width="6" height="4" rx="1" />
+        <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: 'Built on DSM-5 Criteria',
-    body: 'Behavioral scoring framework grounded in DSM-5 diagnostic criteria. Clinical validation study planned, not yet conducted.',
+    title: 'M-CHAT-R/F Instrument',
+    body: 'Uses the M-CHAT-R/F (Modified Checklist for Autism in Toddlers, Revised with Follow-Up) — a peer-reviewed, validated screening questionnaire.',
   },
 ]
 
@@ -98,10 +93,6 @@ export function TrustSection() {
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.55 }}
         >
-          <p className="text-xs font-bold tracking-widest uppercase mb-3"
-            style={{ color: C.teal }}>
-            Our Foundations
-          </p>
           <h2 className="text-3xl sm:text-4xl font-bold"
             style={{ color: C.navy, fontFamily: 'Cambria, Georgia, serif' }}>
             Built With Rigor
@@ -183,10 +174,6 @@ export function AudienceSection() {
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.55 }}
         >
-          <p className="text-xs font-bold tracking-widest uppercase mb-3"
-            style={{ color: C.teal }}>
-            Who It's For
-          </p>
           <h2 className="text-3xl sm:text-4xl font-bold"
             style={{ color: C.navy, fontFamily: 'Cambria, Georgia, serif' }}>
             Built for Families and Clinicians
@@ -206,10 +193,6 @@ export function AudienceSection() {
             style={{ backgroundColor: C.ice }}
           >
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-2"
-                style={{ color: C.teal }}>
-                For Families
-              </p>
               <h3 className="text-2xl font-bold"
                 style={{ color: C.navy, fontFamily: 'Cambria, Georgia, serif' }}>
                 Screen Your Child
@@ -248,9 +231,6 @@ export function AudienceSection() {
             style={{ backgroundColor: C.navy }}
           >
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-2 text-white/50">
-                For Clinicians
-              </p>
               <h3 className="text-2xl font-bold text-white"
                 style={{ fontFamily: 'Cambria, Georgia, serif' }}>
                 AI-Assisted
@@ -331,10 +311,9 @@ export function DisclaimerSection() {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const FOOTER_LINKS = [
-  { label: 'About',          href: '#' },
   { label: 'Privacy Policy', href: '/privacy' },
   { label: 'Terms of Use',   href: '/terms' },
-  { label: 'Contact',        href: '#' },
+  { label: 'Contact',        href: 'mailto:support@seed-platform.in' },
 ]
 
 export function LandingFooter() {

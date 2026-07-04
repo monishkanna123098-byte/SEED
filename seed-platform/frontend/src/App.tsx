@@ -32,6 +32,9 @@ const NewScreeningPage = React.lazy(() =>
 const HistoryPage = React.lazy(() =>
   import('@/pages/parent/HistoryPage').then((m) => ({ default: m.HistoryPage }))
 )
+const ParentProfilePage = React.lazy(() =>
+  import('@/pages/parent/ParentProfilePage').then((m) => ({ default: m.ParentProfilePage }))
+)
 
 // Clinician interface
 const ClinicianLayout = React.lazy(() =>
@@ -54,6 +57,12 @@ const AnalyticsPage = React.lazy(() =>
 )
 const InviteCodesPage = React.lazy(() =>
   import('@/pages/clinician/InviteCodesPage').then((m) => ({ default: m.InviteCodesPage }))
+)
+const PendingReviewsPage = React.lazy(() =>
+  import('@/pages/clinician/PendingReviewsPage').then((m) => ({ default: m.PendingReviewsPage }))
+)
+const ClinicianProfilePage = React.lazy(() =>
+  import('@/pages/clinician/ClinicianProfilePage').then((m) => ({ default: m.ClinicianProfilePage }))
 )
 
 // Admin interface
@@ -140,7 +149,7 @@ function AppRoutes() {
           <Route path="children/add" element={<AddChildPage />} />
           <Route path="screening/new" element={<NewScreeningPage />} />
           <Route path="history" element={<HistoryPage />} />
-          {/* Remaining parent routes added in Stage 4C */}
+          <Route path="profile" element={<ParentProfilePage />} />
         </Route>
 
         {/* Clinician dashboard (role = CLINICIAN) */}
@@ -159,7 +168,8 @@ function AppRoutes() {
           <Route path="patients/:childId"  element={<PatientDetailPage />} />
           <Route path="analytics"          element={<AnalyticsPage />} />
           <Route path="invite-codes"       element={<InviteCodesPage />} />
-          {/* pending, profile added in later stages */}
+          <Route path="pending"            element={<PendingReviewsPage />} />
+          <Route path="profile"            element={<ClinicianProfilePage />} />
         </Route>
 
         {/* Admin interface (role = ADMIN) */}
@@ -225,7 +235,7 @@ export function App() {
             <span className="text-seed-mint">.</span>D
             <span className="text-seed-mint">.</span>
           </div>
-          <div className="w-8 h-8 border-3 border-seed-teal border-t-transparent rounded-full animate-spin mx-auto mt-4" />
+          <div className="w-8 h-8 border-4 border-seed-teal border-t-transparent rounded-full animate-spin mx-auto mt-4" />
         </div>
       </div>
     )

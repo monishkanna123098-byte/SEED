@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { Sparkles } from 'lucide-react'
 import { useParentStore } from '@/stores/parentStore'
 import { calculateAge } from '@/utils/age'
 import { WizardState, ScreeningModality } from './NewScreeningPage'
@@ -215,7 +216,10 @@ export function Step3_Modality({ state, onNext }: Step3Props) {
               Do Both (Recommended) — selected
             </span>
           ) : (
-            '⭐ Do Both (Recommended) — most comprehensive results'
+            <span className="flex items-center justify-center gap-2">
+              <Sparkles size={15} className="text-seed-teal" aria-hidden="true" />
+              Do Both (Recommended) — most comprehensive results
+            </span>
           )}
         </button>
 

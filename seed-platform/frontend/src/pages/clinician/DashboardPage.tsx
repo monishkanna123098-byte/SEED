@@ -84,14 +84,6 @@ function DivergenceWarning() {
   )
 }
 
-// ─── Tier left-border class ───────────────────────────────────────────────────
-
-function tierBorderCls(tier: PendingReview['riskTier']): string {
-  if (tier === 'ELEVATED')     return 'border-l-4 border-l-seed-alert'
-  if (tier === 'INDETERMINATE') return 'border-l-4 border-l-amber-400'
-  return ''
-}
-
 // ─── Session type label ───────────────────────────────────────────────────────
 
 const TYPE_LABEL: Record<string, string> = {
@@ -165,9 +157,8 @@ function PendingQueue() {
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04 }}
-                className={`flex items-center gap-3 px-5 py-3.5
-                             hover:bg-slate-50/60 transition-colors duration-100
-                             ${tierBorderCls(review.riskTier)}`}
+                className="flex items-center gap-3 px-5 py-3.5
+                             hover:bg-slate-50/60 transition-colors duration-100"
               >
                 {/* Avatar */}
                 <div className="w-8 h-8 rounded-full bg-seed-teal/10 text-seed-teal

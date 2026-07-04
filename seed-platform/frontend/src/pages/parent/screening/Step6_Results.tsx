@@ -155,9 +155,9 @@ function RiskTierCard({ tier }: { tier: DisplayTier }) {
   const cfg = getTierCard(tier)
   return (
     <motion.div
-      initial={{ scale: 0.88, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', duration: 0.55, bounce: 0.28 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
       className={`rounded-2xl border-2 ${cfg.bg} ${cfg.border} p-5`}
     >
       {/* RiskTierBadge at top — canonical label/color, no duplication */}
@@ -350,7 +350,8 @@ export function Step6_Results({ state }: Step6Props) {
       {/* Print-only header injected into <head> via a style tag */}
       <style>{`
         @media print {
-          body > *:not(#seed-print-root) { display: none !important; }
+          aside, header { display: none !important; }
+          main { margin-left: 0 !important; padding-top: 0 !important; }
           #seed-print-root { display: block !important; }
           .no-print { display: none !important; }
           .seed-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }

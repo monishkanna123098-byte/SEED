@@ -19,10 +19,23 @@
     min-width: 375px;
   }
 
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
   /* Focus styles for accessibility */
   :focus-visible {
     outline: 2px solid #028090;
     outline-offset: 2px;
+  }
+
+  /* Respect user motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

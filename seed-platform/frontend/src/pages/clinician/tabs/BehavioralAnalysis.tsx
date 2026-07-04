@@ -102,16 +102,16 @@ interface MetricCardProps {
 }
 
 function MetricCard({ title, dsm5, metric, children, delay = 0 }: MetricCardProps) {
-  const borderCls = metric.flag
-    ? 'border-l-4 border-l-seed-alert'
-    : 'border-l-4 border-l-emerald-400'
+  const ringCls = metric.flag
+    ? 'ring-1 ring-seed-alert/40'
+    : 'ring-1 ring-emerald-200'
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.3 }}
-      className={`seed-card space-y-3 ${borderCls}`}
+      className={`seed-card space-y-3 ${ringCls}`}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-2 flex-wrap">

@@ -288,7 +288,7 @@ function BuddyIllustration() {
       {/* Floating score card */}
       <motion.div
         className="absolute -right-2 top-12 bg-white rounded-2xl shadow-xl
-                   px-3 py-2.5 flex items-center gap-2 border border-slate-100"
+                   px-3 py-2.5 flex items-center gap-2"
         animate={{ y: [0, -6, 0] }}
         transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
       >
@@ -308,7 +308,7 @@ function BuddyIllustration() {
       {/* Floating clinician badge */}
       <motion.div
         className="absolute -left-4 bottom-16 bg-white rounded-2xl shadow-xl
-                   px-3 py-2.5 flex items-center gap-2 border border-slate-100"
+                   px-3 py-2.5 flex items-center gap-2"
         animate={{ y: [0, 5, 0] }}
         transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
       >
@@ -342,17 +342,6 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          {/* Eyebrow */}
-          <motion.p
-            className="text-xs font-bold tracking-widest uppercase mb-4"
-            style={{ color: C.teal }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
-            AI-Powered Developmental Screening
-          </motion.p>
-
           {/* H1 — Cambria with fallback */}
           <motion.h1
             className="text-4xl sm:text-5xl lg:text-[56px] font-bold leading-tight mb-6"
@@ -397,15 +386,15 @@ export function HeroSection() {
             >
               Start Screening
             </Link>
-            <Link
-              to="/register"
+            <a
+              href="#clinicians"
               className="px-7 py-3.5 rounded-xl border-2 border-seed-navy font-semibold text-sm
                          text-seed-navy bg-transparent
                          hover:bg-seed-navy hover:text-white
                          transition-all duration-200 hover:-translate-y-0.5"
             >
               For Clinicians <ArrowRight size={14} className="inline ml-1" />
-            </Link>
+            </a>
           </motion.div>
 
           {/* Disclaimer */}
@@ -528,10 +517,6 @@ export function ProblemSection() {
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.6 }}
         >
-          <p className="text-xs font-bold tracking-widest uppercase mb-3"
-            style={{ color: C.teal }}>
-            The Challenge
-          </p>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4"
             style={{ color: C.navy, fontFamily: 'Cambria, Georgia, serif' }}>
             The Problem We're Solving
@@ -583,7 +568,6 @@ export function ProblemSection() {
 const HOW_STEPS = [
   {
     key:    'questionnaire',
-    number: '01',
     color:  C.teal,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
@@ -598,7 +582,6 @@ const HOW_STEPS = [
   },
   {
     key:    'assessment',
-    number: '02',
     color:  C.navy,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
@@ -613,7 +596,6 @@ const HOW_STEPS = [
   },
   {
     key:    'review',
-    number: '03',
     color:  '#7C3AED',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
@@ -643,10 +625,6 @@ export function HowItWorksSection() {
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.6 }}
         >
-          <p className="text-xs font-bold tracking-widest uppercase mb-3"
-            style={{ color: C.teal }}>
-            The Process
-          </p>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4"
             style={{ color: C.navy, fontFamily: 'Cambria, Georgia, serif' }}>
             How S.E.E.D. Works
@@ -690,13 +668,6 @@ export function HowItWorksSection() {
                   >
                     {step.icon}
                   </div>
-                  <span
-                    className="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center
-                               justify-center text-xs font-extrabold text-white shadow-md"
-                    style={{ backgroundColor: step.color }}
-                  >
-                    {step.number}
-                  </span>
                 </div>
 
                 {/* Arrow between steps (mobile) */}
