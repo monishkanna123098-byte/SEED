@@ -42,6 +42,8 @@ async function main() {
   await prisma.screeningSession.deleteMany()
   await prisma.child.deleteMany()
   await prisma.inviteCode.deleteMany()
+  await prisma.notification.deleteMany()
+  await prisma.authEvent.deleteMany()
   await prisma.user.deleteMany()
   await prisma.normativeBaseline.deleteMany()
 
