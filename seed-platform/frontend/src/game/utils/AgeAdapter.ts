@@ -63,15 +63,12 @@ export interface AgeConfig {
  * removes its last caller (i.e. once Modules A–E replace Modules 1–4).
  */
 
-/** Below this age, SEED does not screen. Callers must gate entry before
- *  reaching the game engine (see design spec §4) — this constant is what
- *  they should check against. */
-export const MIN_AGE_MONTHS = 18
+import { MIN_AGE_MONTHS, MAX_AGE_MONTHS } from '../../utils/ageConstants'
 
-/** Above this age, sessions are clamped to Band 3 rather than rejected —
- *  callers that care whether clamping occurred check ageMonths against
- *  this constant directly; AgeAdapter's own return values carry no tag. */
-export const MAX_AGE_MONTHS = 60
+/** Re-exported for backward compatibility — anything already importing
+ *  these from AgeAdapter.ts keeps working. Canonical definition lives in
+ *  utils/ageConstants.ts; see docs/superpowers/specs/2026-07-18-age-floor-ceiling-consistency-design.md */
+export { MIN_AGE_MONTHS, MAX_AGE_MONTHS }
 
 export type AgeBand = 'BAND_1' | 'BAND_2' | 'BAND_3'
 
@@ -138,6 +135,152 @@ export function getModuleConfig(moduleKey: ModuleKey, ageMonths: number): Module
     )
   }
   return { moduleKey, ageBand }
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * PER-MODULE CONFIG GETTERS (Stage B) — spec references:
+ *   docs/superpowers/specs/2026-07-18-module-a-look-design.md
+ *   docs/superpowers/specs/2026-07-18-module-c-peek-design.md
+ *   docs/superpowers/specs/2026-07-18-module-b-hello-design.md
+ *   docs/superpowers/specs/2026-07-18-module-d-sortplus-design.md
+ *   docs/superpowers/specs/2026-07-18-module-e-followplus-design.md
+ *
+ * Each wraps getModuleConfig() first — validation/throw behavior for free,
+ * not duplicated — then returns the module's real per-band parameters.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+// ── Module A: LOOK ──────────────────────────────────────────────────────
+
+export interface LookModuleConfig {
+  numCharacters: 2 | 3 | 4
+  nameCallSalience: 'high' | 'medium' | 'low'
+  starSizePx: number
+  responseWindowMs: number
+  initiationWindowMs: number
+  nameCallIntervalMsRange: [number, number]
+  jointAttentionIntervalMsRange: [number, number]
+  trialCounts: { nameCall: number; jointAttention: number }
+}
+
+export function getLookConfig(ageMonths: number): LookModuleConfig {
+  const ageBand = getModuleConfig('LOOK', ageMonths).ageBand
+  // initiationWindowMs and both interval ranges are constant across bands —
+  // see the design spec §4 for why (pacing properties of the game, not the
+  // child's processing speed, which is what the response window varies for).
+  const shared = {
+    initiationWindowMs: 1500,
+    nameCallIntervalMsRange: [8000, 12000] as [number, number],
+    jointAttentionIntervalMsRange: [4000, 5000] as [number, number],
+  }
+  switch (ageBand) {
+    case 'BAND_1':
+      return { ...shared, numCharacters: 2, nameCallSalience: 'high', starSizePx: 90, responseWindowMs: 4000, trialCounts: { nameCall: 5, jointAttention: 3 } }
+    case 'BAND_2':
+      return { ...shared, numCharacters: 3, nameCallSalience: 'medium', starSizePx: 60, responseWindowMs: 3000, trialCounts: { nameCall: 6, jointAttention: 6 } }
+    case 'BAND_3':
+      return { ...shared, numCharacters: 4, nameCallSalience: 'low', starSizePx: 40, responseWindowMs: 2500, trialCounts: { nameCall: 7, jointAttention: 8 } }
+  }
+}
+
+// ── Module C: PEEK ──────────────────────────────────────────────────────
+
+export interface PeekModuleConfig {
+  numCups: 2 | 3
+  numShufflesRange: [number, number]
+  objectSalience: 'high' | 'standard'
+  confusionIntensity: 'exaggerated' | 'moderate' | 'subtle'
+  checkingWindowMs: number
+  cupResponseWindowMs: number
+  maxCupTaps: number
+  trialCounts: { plain: number; referencing: number }
+}
+
+export function getPeekConfig(ageMonths: number): PeekModuleConfig {
+  const ageBand = getModuleConfig('PEEK', ageMonths).ageBand
+  switch (ageBand) {
+    case 'BAND_1':
+      return { numCups: 2, numShufflesRange: [0, 1], objectSalience: 'high', confusionIntensity: 'exaggerated', checkingWindowMs: 3000, cupResponseWindowMs: 5000, maxCupTaps: 4, trialCounts: { plain: 4, referencing: 2 } }
+    case 'BAND_2':
+      return { numCups: 3, numShufflesRange: [1, 2], objectSalience: 'standard', confusionIntensity: 'moderate', checkingWindowMs: 2500, cupResponseWindowMs: 4000, maxCupTaps: 6, trialCounts: { plain: 4, referencing: 4 } }
+    case 'BAND_3':
+      return { numCups: 3, numShufflesRange: [2, 3], objectSalience: 'standard', confusionIntensity: 'subtle', checkingWindowMs: 2000, cupResponseWindowMs: 3000, maxCupTaps: 6, trialCounts: { plain: 3, referencing: 7 } }
+  }
+}
+
+// ── Module B: HELLO ─────────────────────────────────────────────────────
+
+export interface HelloModuleConfig {
+  maxSequenceSteps: 1 | 2 | 3
+  widgetChoiceCount: 2 | 3
+  novelGestureFromTrial: number | null
+  responseWindowMs: number
+  trialCount: number
+}
+
+export function getHelloConfig(ageMonths: number): HelloModuleConfig {
+  const ageBand = getModuleConfig('HELLO', ageMonths).ageBand
+  switch (ageBand) {
+    case 'BAND_1':
+      return { maxSequenceSteps: 1, widgetChoiceCount: 2, novelGestureFromTrial: null, responseWindowMs: 5000, trialCount: 5 }
+    case 'BAND_2':
+      return { maxSequenceSteps: 2, widgetChoiceCount: 2, novelGestureFromTrial: 4, responseWindowMs: 4000, trialCount: 8 }
+    case 'BAND_3':
+      return { maxSequenceSteps: 3, widgetChoiceCount: 3, novelGestureFromTrial: 4, responseWindowMs: 3000, trialCount: 10 }
+  }
+}
+
+// ── Module D: SORT_PLUS ─────────────────────────────────────────────────
+
+export interface SortPlusModuleConfig {
+  hasRuleSwitch: boolean
+  objectsPerPhase: number[]
+  /** Duration in ms for one object's fall, matching the existing
+   *  Module3_Sort.ts tween convention (a duration, not a px/sec rate —
+   *  the design spec used `fallSpeedPxPerSec`; renamed here to match
+   *  what the mechanic being reused actually consumes). Grounded in the
+   *  already-tuned old AgeConfig values (4000ms younger / 3000ms older),
+   *  not invented fresh. */
+  fallSpeedMs: number
+  ruleSwitchCheckWindowMs: number // only meaningful when hasRuleSwitch is true
+}
+
+export function getSortPlusConfig(ageMonths: number): SortPlusModuleConfig {
+  const ageBand = getModuleConfig('SORT_PLUS', ageMonths).ageBand
+  switch (ageBand) {
+    case 'BAND_1':
+      // Unreachable — SORT_PLUS isn't in Band 1's sequence, so
+      // getModuleConfig above already threw before this point.
+      throw new Error('getSortPlusConfig: unreachable — BAND_1 does not run SORT_PLUS')
+    case 'BAND_2':
+      return { hasRuleSwitch: false, objectsPerPhase: [8], fallSpeedMs: 4000, ruleSwitchCheckWindowMs: 0 }
+    case 'BAND_3':
+      return { hasRuleSwitch: true, objectsPerPhase: [5, 5], fallSpeedMs: 3000, ruleSwitchCheckWindowMs: 2500 }
+  }
+}
+
+// ── Module E: FOLLOW_PLUS ───────────────────────────────────────────────
+
+export interface FollowPlusModuleConfig {
+  trials: number
+  sequenceLengthRange: [number, number]
+  responseWindowMs: number
+  modifiedTrialProportion: number
+  socialCheckWindowMs: number
+}
+
+export function getFollowPlusConfig(ageMonths: number): FollowPlusModuleConfig {
+  const ageBand = getModuleConfig('FOLLOW_PLUS', ageMonths).ageBand
+  if (ageBand !== 'BAND_3') {
+    // Unreachable for the same reason as getSortPlusConfig above —
+    // FOLLOW_PLUS only exists in BAND_3's sequence.
+    throw new Error(`getFollowPlusConfig: unreachable — ${ageBand} does not run FOLLOW_PLUS`)
+  }
+  // Grounded in the existing older-band AgeConfig values (trials, maxSequenceLength,
+  // responseWindowMs, modifiedTrialProportion) — see design spec §2. Only
+  // socialCheckWindowMs is genuinely new (the Buddy-pause mechanic didn't exist before).
+  return { trials: 8, sequenceLengthRange: [3, 4], responseWindowMs: 5000, modifiedTrialProportion: 0.5, socialCheckWindowMs: 1500 }
 }
 
 /**

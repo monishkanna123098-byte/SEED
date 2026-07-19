@@ -12,11 +12,23 @@
  *     ├─ leftArm, rightArm (Ellipse, origin at shoulder for rotation)
  *     ├─ body (Circle)
  *     └─ face (Container, sits on body — rotates slightly for "looking")
+ *          ├─ leftEar, rightEar (Ellipse) — tilt together with the face
  *          ├─ leftCheek, rightCheek (Ellipse)
  *          ├─ leftEyeWhite, rightEyeWhite (Circle)
  *          ├─ leftPupil, rightPupil (Circle)
  *          ├─ leftBrow, rightBrow (Graphics)
  *          └─ mouth (Graphics)
+ *
+ * Idle behavior (always running once constructed, no scene action needed):
+ * a vertical bob (root), a slower breathing scale-pulse (body), a random-
+ * interval blink (eyes), and a random-interval ear wiggle — layered,
+ * independently-timed tweens/timers so Buddy never looks like a single
+ * looping animation cycle.
+ *
+ * Interactivity is opt-in via enableInteraction() — most scenes don't need
+ * Buddy tappable, but MenuScene and several new modules (social-check
+ * mechanics) do. Kept separate from the constructor so existing call
+ * sites are unaffected.
  */
 
 import Phaser from 'phaser'
@@ -24,6 +36,7 @@ import Phaser from 'phaser'
 // ─── SEED Buddy palette ─────────────────────────────────────────────────────
 const BUDDY_BODY    = 0xffb347
 const BUDDY_LIMB    = 0xf2a23e
+const BUDDY_EAR     = 0xf2a23e
 const EYE_WHITE     = 0xffffff
 const PUPIL_COLOR   = 0x1a2b3c
 const CHEEK_COLOR   = 0xffc1cc
@@ -32,7 +45,7 @@ const BROW_COLOR    = 0x8a5a1e
 
 export type LookDirection = 'left' | 'center' | 'right'
 export type GestureType = 'wave' | 'clap' | 'stomp' | 'spin' | 'jump'
-export type MouthState = 'smile' | 'open' | 'small_o' | 'flat'
+export type MouthState = 'smile' | 'open' | 'small_o' | 'flat' | 'frown'
 
 const BODY_RADIUS = 58
 
@@ -46,6 +59,8 @@ export class BuddySprite {
   private rightArm!: Phaser.GameObjects.Ellipse
   private leftLeg!: Phaser.GameObjects.Ellipse
   private rightLeg!: Phaser.GameObjects.Ellipse
+  private leftEar!: Phaser.GameObjects.Ellipse
+  private rightEar!: Phaser.GameObjects.Ellipse
 
   private leftEyeWhite!: Phaser.GameObjects.Arc
   private rightEyeWhite!: Phaser.GameObjects.Arc
@@ -56,7 +71,10 @@ export class BuddySprite {
   private mouth!: Phaser.GameObjects.Graphics
 
   private idleTween?: Phaser.Tweens.Tween
+  private breathingTween?: Phaser.Tweens.Tween
   private blinkTimer?: Phaser.Time.TimerEvent
+  private earWiggleTimer?: Phaser.Time.TimerEvent
+  private isHovering = false
   private destroyed = false
 
   constructor(scene: Phaser.Scene, x: number, y: number, scale: number = 1) {
@@ -70,6 +88,7 @@ export class BuddySprite {
 
     this.startIdle()
     this.scheduleBlink()
+    this.scheduleEarWiggle()
   }
 
   // ── Construction ────────────────────────────────────────────────────────
@@ -101,6 +120,15 @@ export class BuddySprite {
     const s = this.scene
     const face = s.add.container(0, -6)
 
+    // Ears — sit above the brows, tilt outward slightly for a warm, floppy look.
+    // Attached to `face` (not `root`/body directly) so they turn naturally
+    // together with lookAt()'s existing head-tilt, rather than staying fixed
+    // while the face moves underneath them.
+    this.leftEar = s.add.ellipse(-40, -34, 20, 28, BUDDY_EAR)
+    this.rightEar = s.add.ellipse(40, -34, 20, 28, BUDDY_EAR)
+    this.leftEar.setAngle(-15)
+    this.rightEar.setAngle(15)
+
     // Cheeks
     const leftCheek = s.add.ellipse(-34, 14, 18, 12, CHEEK_COLOR, 0.55)
     const rightCheek = s.add.ellipse(34, 14, 18, 12, CHEEK_COLOR, 0.55)
@@ -125,6 +153,7 @@ export class BuddySprite {
     this.setMouth('smile')
 
     face.add([
+      this.leftEar, this.rightEar,
       leftCheek, rightCheek,
       this.leftEyeWhite, this.rightEyeWhite,
       this.leftPupil, this.rightPupil,
@@ -183,6 +212,19 @@ export class BuddySprite {
         m.lineTo(10, 16)
         m.strokePath()
         break
+
+      case 'frown':
+        // Mirrors 'smile' exactly: same arc geometry, angle range flipped
+        // 180° (15°-165° → 195°-345°) so the curve inverts (dips at the
+        // corners, peaks in the middle) instead of smiling. cy shifted from
+        // 14 to 22 so the corners land at roughly the same height smile's
+        // corners do (~y=18), keeping both expressions in the same visual
+        // mouth-zone rather than frown floating up near the eyes.
+        m.lineStyle(4, MOUTH_COLOR, 1)
+        m.beginPath()
+        m.arc(0, 22, 15, Phaser.Math.DegToRad(195), Phaser.Math.DegToRad(345), false)
+        m.strokePath()
+        break
     }
   }
 
@@ -198,10 +240,28 @@ export class BuddySprite {
       yoyo: true,
       repeat: -1,
     })
+
+    // Breathing — a slower, independent scale-pulse on the body specifically
+    // (not the whole root, so it doesn't fight with the vertical bob above).
+    // Deliberately a different duration (1800ms vs 1100ms) so the two cycles
+    // drift in and out of phase with each other rather than looking like one
+    // synchronized loop — this is most of what makes "always alive" read as
+    // alive rather than as an obviously repeating animation.
+    this.breathingTween?.stop()
+    this.breathingTween = this.scene.tweens.add({
+      targets: this.body,
+      scaleX: 1.035,
+      scaleY: 0.975,
+      duration: 1800,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    })
   }
 
   stopIdle(): void {
     this.idleTween?.stop()
+    this.breathingTween?.stop()
   }
 
   private scheduleBlink(): void {
@@ -222,6 +282,41 @@ export class BuddySprite {
       duration: 70,
       yoyo: true,
       ease: 'Sine.easeInOut',
+    })
+  }
+
+  private scheduleEarWiggle(): void {
+    if (this.destroyed) return
+    // Different range from blink (4000-8000 vs 2200-5000) and its own
+    // independent timer, deliberately not synchronized to blink's schedule —
+    // same "independently-timed" principle as the breathing/bob split above.
+    const delay = Phaser.Math.Between(4000, 8000)
+    this.earWiggleTimer = this.scene.time.delayedCall(delay, () => {
+      if (this.destroyed) return
+      this.earWiggle()
+      this.scheduleEarWiggle()
+    })
+  }
+
+  private earWiggle(): void {
+    const leftBase = this.leftEar.angle
+    const rightBase = this.rightEar.angle
+    this.scene.tweens.add({
+      targets: this.leftEar,
+      angle: leftBase - 12,
+      duration: 140,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut',
+    })
+    this.scene.tweens.add({
+      targets: this.rightEar,
+      angle: rightBase + 12,
+      duration: 140,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut',
+      delay: 60, // slight stagger between ears reads less mechanically symmetric
     })
   }
 
@@ -486,6 +581,121 @@ export class BuddySprite {
     return this.gestureWave(onComplete)
   }
 
+  /**
+   * Curious/questioning look: asymmetric brow raise (one up, one level —
+   * distinct from lookAt's symmetric raise), head tilt, small "hmm" mouth.
+   * Used for hover reactions and social-referencing "confusion" moments
+   * (Modules C/D/E) — noticing something unexpected, not distress.
+   */
+  playCurious(onComplete?: () => void): number {
+    const duration = 700
+    this.setMouth('small_o')
+    const leftBrowBase = this.leftBrow.y
+    const rightBrowBase = this.rightBrow.y
+
+    this.scene.tweens.add({ targets: this.leftBrow, y: leftBrowBase - 4, duration: 220, ease: 'Sine.easeOut' })
+    this.scene.tweens.add({ targets: this.rightBrow, y: rightBrowBase, duration: 220 })
+    this.scene.tweens.chain({
+      targets: this.face,
+      tweens: [
+        { angle: 10, duration: 260, ease: 'Sine.easeOut' },
+        { angle: 10, duration: 220 }, // hold the tilt briefly
+        { angle: 0, duration: 220, ease: 'Sine.easeIn' },
+      ],
+      onComplete: () => {
+        this.leftBrow.setY(leftBrowBase)
+        this.rightBrow.setY(rightBrowBase)
+        this.setMouth('smile')
+        onComplete?.()
+      },
+    })
+    return duration
+  }
+
+  /**
+   * Eager/anticipatory energy — distinct from playCheer, which is a
+   * post-success celebration burst. This is lighter and used BEFORE
+   * something happens (Buddy is about to reveal something), not after.
+   */
+  playExcited(onComplete?: () => void): number {
+    const duration = 650
+    this.setMouth('open')
+    this.setBrowsRaised(true)
+
+    this.scene.tweens.chain({
+      targets: this.root,
+      tweens: [
+        { angle: -5, duration: 90, ease: 'Sine.easeInOut' },
+        { angle: 5, duration: 90, ease: 'Sine.easeInOut' },
+        { angle: -4, duration: 90, ease: 'Sine.easeInOut' },
+        { angle: 4, duration: 90, ease: 'Sine.easeInOut' },
+        { angle: 0, duration: 90, ease: 'Sine.easeInOut' },
+      ],
+      onComplete: () => {
+        this.setMouth('smile')
+        this.setBrowsRaised(false)
+        onComplete?.()
+      },
+    })
+    return duration
+  }
+
+  /**
+   * Sad expression — available as a capability, deliberately NOT wired to
+   * incorrect-answer feedback anywhere in this codebase. That job stays
+   * with playEncourage(), whose own doc comment already states the reason:
+   * "never sad or punitive" — showing this to a young child in response to
+   * a wrong answer in a screening tool risks feeling punitive and could
+   * bias later trials. This exists for other narrative moments (e.g. a
+   * brief beat before Buddy recovers into something else), not that one.
+   */
+  playSad(onComplete?: () => void): number {
+    const duration = 800
+    this.setMouth('frown')
+    this.setBrowsRaised(false)
+    const baseY = this.root.y
+
+    this.scene.tweens.add({ targets: this.leftArm, angle: -6, duration: 300, ease: 'Sine.easeOut' })
+    this.scene.tweens.add({ targets: this.rightArm, angle: 6, duration: 300, ease: 'Sine.easeOut' })
+    this.scene.tweens.chain({
+      targets: this.root,
+      tweens: [
+        { y: baseY + 6, duration: 350, ease: 'Sine.easeOut' },
+        { y: baseY, duration: 450, ease: 'Sine.easeInOut', onComplete: () => onComplete?.() },
+      ],
+    })
+    return duration
+  }
+
+  // ── Interactivity (opt-in) ───────────────────────────────────────────────
+
+  /**
+   * Makes Buddy tappable/hoverable. Opt-in and separate from the
+   * constructor so existing scenes (LoadScene, ResultScene, Module 1-4)
+   * are unaffected — only scenes that need it call this. MenuScene calls
+   * it for the hover-reaction requirement; several new modules (social-
+   * check mechanics — Buddy becomes tappable during a confusion/pause
+   * moment) will call it too.
+   */
+  enableInteraction(onTap?: () => void): void {
+    this.body.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Circle(0, 0, BODY_RADIUS), hitAreaCallback: Phaser.Geom.Circle.Contains })
+
+    this.body.on('pointerover', () => {
+      if (this.destroyed || this.isHovering) return
+      this.isHovering = true
+      this.playCurious()
+    })
+    this.body.on('pointerout', () => {
+      this.isHovering = false
+    })
+    if (onTap) {
+      this.body.on('pointerup', () => {
+        if (this.destroyed) return
+        onTap()
+      })
+    }
+  }
+
   // ── Utility ───────────────────────────────────────────────────────────────
 
   setPosition(x: number, y: number): void {
@@ -499,7 +709,9 @@ export class BuddySprite {
   destroy(): void {
     this.destroyed = true
     this.idleTween?.stop()
+    this.breathingTween?.stop()
     this.blinkTimer?.remove()
+    this.earWiggleTimer?.remove()
     this.root.destroy()
   }
 }

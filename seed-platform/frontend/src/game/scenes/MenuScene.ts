@@ -33,6 +33,7 @@ export class MenuScene extends Phaser.Scene {
     })
 
     this.buddy = new BuddySprite(this, CANVAS_WIDTH / 2, 250, 1.3)
+    this.buddy.enableInteraction()
     this.buddy.playWaveGreeting(() => {
       this.time.addEvent({
         delay: 4000,
