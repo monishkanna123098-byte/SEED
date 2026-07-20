@@ -268,7 +268,18 @@ export class ModuleC_Peek extends BaseGameScene {
     this.cupTaps.push(currentIndex)
 
     if (currentIndex === this.targetSlot) {
-      this.resolveTrial(true)
+      // Reveal the object under the correct cup before resolving — a
+      // child wants to SEE they were right, not just hear a sound. This
+      // was previously asymmetric: incorrect taps already got a peek
+      // (below), correct taps got none at all.
+      const revealX = this.cups[currentIndex].container.x
+      const reveal = this.add.circle(revealX, CUP_Y + 40, 18, OBJECT_COLOR)
+      reveal.setDepth(5)
+      this.lowerCup(currentIndex, false)
+      this.time.delayedCall(600, () => {
+        reveal.destroy()
+        this.resolveTrial(true)
+      })
     } else if (this.cupTaps.length >= this.cfg.maxCupTaps) {
       this.resolveTrial(false)
     } else {
