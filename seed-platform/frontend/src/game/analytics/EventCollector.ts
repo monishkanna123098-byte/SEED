@@ -12,6 +12,9 @@
  * extraction functions.
  */
 
+import type { ModuleKey } from '../utils/AgeAdapter'
+import { getModuleSequence, getAgeBand } from '../utils/AgeAdapter'
+
 // ─── Module 1: Joint Attention (Gaze) ────────────────────────────────────────
 export interface GazeEvent {
   type: 'tap'
@@ -93,6 +96,41 @@ export interface DisengagementEvent {
   timestamp: number
   duration_ms: number
   module: string
+  context: DisengagementContext
+  preceding_event: PrecedingEvent
+  trial_id: number | null
+}
+
+export type DisengagementContext = 'mid_trial' | 'inter_trial' | 'post_feedback'
+export type PrecedingEvent =
+  | 'buddy_call'
+  | 'trial_failure'
+  | 'trial_success'
+  | 'rule_change'
+  | 'social_check_prompt'
+  | 'none'
+
+// ─── Generic, module-agnostic infrastructure (sub-project 3) ────────────────
+// Cross-cutting mechanics used by multiple new modules — social-check
+// (Modules C, D, E) and perseveration (Modules B, D, E) — collected the
+// same way regardless of which specific module triggers them, the same
+// way DisengagementEvent already worked generically across every module.
+// See docs/superpowers/specs/2026-07-18-eventcollector-schema-design.md
+export interface SocialCheckEvent {
+  type: 'social_check'
+  module: ModuleKey
+  timestamp_ms: number
+  trigger: 'buddy_pause' | 'rule_change' | 'confusion'
+  action: 'tap_buddy' | 'tap_other' | 'no_action'
+  latency_ms: number | null // null when action is 'no_action' — nothing to time
+}
+
+export interface PerseverationEvent {
+  type: 'perseveration'
+  module: ModuleKey
+  timestamp_ms: number
+  position: string // module-defined identifier of what was repeated — deliberately free-form, see design spec §4
+  count: number
 }
 
 export interface GameMetrics {
@@ -118,7 +156,6 @@ export interface GameCompletionPayload {
   touchPrecisionScore: number
   imitationAccuracy: number
   rigidityScore: number
-  completionRate2: number
   // Normalized events for the analysis engine (GameEvent schema)
   events: Record<string, unknown>[]
   ageGroup: string
@@ -135,9 +172,16 @@ export class EventCollector {
   private module3Events: SortEvent[] = []
   private module4Events: FollowEvent[] = []
   private disengagementEvents: DisengagementEvent[] = []
+  private socialCheckEvents: SocialCheckEvent[] = []
+  private perseverationEvents: PerseverationEvent[] = []
   private modulesCompleted: string[] = []
 
   constructor(sessionId: string, ageMonths: number) {
+    // Fail fast: getAgeGroup() (called inside buildCompletionPayload, at
+    // session END) now depends on getAgeBand(), which throws below the
+    // floor. Validating here instead means a bad age surfaces immediately
+    // at session start, not after 10 minutes of collected data is lost.
+    getAgeBand(ageMonths)
     this.sessionId = sessionId
     this.ageMonths = ageMonths
     this.startTime = Date.now()
@@ -164,8 +208,42 @@ export class EventCollector {
     this.module4Events.push(event)
   }
 
-  addDisengagement(module: string, timestamp: number, durationMs: number): void {
-    this.disengagementEvents.push({ timestamp, duration_ms: durationMs, module })
+  /**
+   * Extended per sub-project 3's spec §3. The three new params default
+   * to values matching the ONE existing call site (BaseGameScene's
+   * inactivity-advance timer), traced directly rather than guessed:
+   * it always fires after onInactivityCall() already played Buddy's
+   * call animation, and always mid-response, never between trials.
+   * Old call sites (3 args) are unaffected.
+   */
+  addDisengagement(
+    module: string,
+    timestamp: number,
+    durationMs: number,
+    context: DisengagementContext = 'mid_trial',
+    precedingEvent: PrecedingEvent = 'buddy_call',
+    trialId: number | null = null
+  ): void {
+    this.disengagementEvents.push({
+      timestamp,
+      duration_ms: durationMs,
+      module,
+      context,
+      preceding_event: precedingEvent,
+      trial_id: trialId,
+    })
+  }
+
+  /** Generic, module-agnostic — any of the new modules can call this
+   *  during a confusion/pause/rule-change moment. See design spec §4. */
+  addSocialCheckEvent(event: SocialCheckEvent): void {
+    this.socialCheckEvents.push(event)
+  }
+
+  /** Generic, module-agnostic — any of the new modules can call this
+   *  when a perseverative repeat is detected. See design spec §4. */
+  addPerseverationEvent(event: PerseverationEvent): void {
+    this.perseverationEvents.push(event)
   }
 
   // ── Module completion tracking ──────────────────────────────────────────────
@@ -233,13 +311,20 @@ export class EventCollector {
     }
   }
 
+  /**
+   * Fixed per sub-project 3's spec §6. Previously produced a stale
+   * six-bucket format ('24-30m' etc.) borrowed from the analysis
+   * engine's own video-normative lookup — a different, legitimate
+   * subsystem serving a different modality, not something this game
+   * session's ageGroup label should have been copying. Traced the
+   * actual data flow: this field is stored on GameSession for display
+   * only and never reaches scoring (processGameData forwards only
+   * session_id/child_age_months/game_events), so this was never a
+   * scoring bug — just a label that would mislead a clinician reading
+   * it, since it had nothing to do with which modules actually ran.
+   */
   private getAgeGroup(): string {
-    if (this.ageMonths < 30) return '24-30m'
-    if (this.ageMonths < 36) return '30-36m'
-    if (this.ageMonths < 42) return '36-42m'
-    if (this.ageMonths < 48) return '42-48m'
-    if (this.ageMonths < 54) return '48-54m'
-    return '54-60m'
+    return `${getAgeBand(this.ageMonths)}_${this.ageMonths}m`
   }
 
   // ── Normalization for analysis engine ────────────────────────────────────────
@@ -329,13 +414,44 @@ export class EventCollector {
       })
     }
 
+    // Generic infrastructure (sub-project 3). NOTE: main.py's GameEvent
+    // Pydantic model doesn't yet have trigger/action/position/count fields
+    // (confirmed by inspection — it's one flat model, not a discriminated
+    // union). These parse without error today but carry zero signal until
+    // the analysis engine sub-project adds them. See design spec §5.
+    for (const e of this.socialCheckEvents) {
+      out.push({
+        type: 'social_check',
+        module_id: e.module,
+        timestamp: e.timestamp_ms,
+        trigger: e.trigger,
+        action: e.action,
+        latency_ms: e.latency_ms,
+      })
+    }
+
+    for (const e of this.perseverationEvents) {
+      out.push({
+        type: 'perseveration',
+        module_id: e.module,
+        timestamp: e.timestamp_ms,
+        position: e.position,
+        count: e.count,
+      })
+    }
+
     return out
   }
 
   buildCompletionPayload(): GameCompletionPayload {
     const totalDurationMs = Date.now() - this.startTime
     const metrics = this.computeMetrics()
-    const totalModules = 4
+    // Fixed: was hardcoded to 4, which caps completionRate at 0.75 for a
+    // fully-completed Band 1 session (3 modules) or double-penalizes/
+    // under-credits any band whose module count isn't exactly 4 — a bug
+    // this exact age-band restructuring (Stage B) introduced. Found
+    // while implementing this, not in the original design spec.
+    const totalModules = getModuleSequence(this.ageMonths).length
     const completionRate = this.modulesCompleted.length / totalModules
 
     return {
@@ -351,7 +467,6 @@ export class EventCollector {
       touchPrecisionScore: metrics.touch_precision_mean,
       imitationAccuracy: metrics.imitation_accuracy,
       rigidityScore: metrics.rigidity_score,
-      completionRate2: completionRate,
       events: this.mapEvents(),
       ageGroup: this.getAgeGroup(),
       gameModuleId: 'buddys-world-combined',
