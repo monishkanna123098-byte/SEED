@@ -19,7 +19,8 @@ import Phaser from 'phaser'
 import { BuddySprite } from '../utils/BuddySprite'
 import { ProgressBar } from '../utils/ProgressBar'
 import { SoundManager } from '../utils/SoundManager'
-import { AgeAdapter } from '../utils/AgeAdapter'
+import { AgeAdapter, getModuleSequence, MODULE_SEQUENCE_BY_BAND } from '../utils/AgeAdapter'
+import type { ModuleKey } from '../utils/AgeAdapter'
 import { EventCollector } from '../analytics/EventCollector'
 
 export const CANVAS_WIDTH = 800
@@ -33,8 +34,18 @@ export abstract class BaseGameScene extends Phaser.Scene {
   protected soundManager!: SoundManager
   protected ageMonths!: number
 
-  /** 0-3, set by each module subclass before create() runs (class field). */
-  protected abstract moduleIndex: number
+  /**
+   * 0-3, set by OLD module subclasses (1-4) before create() runs.
+   * Changed from `abstract` to a defaulted concrete field: it can't
+   * depend on ageMonths (this field, if set at all, is assigned at
+   * scene CONSTRUCTION time — game boot, before the registry has
+   * ageMonths — not at scene START time when create() runs), so it
+   * can't be computed dynamically the way the new per-band module
+   * sequence needs to be. NEW module scenes (A-E) don't need to touch
+   * this at all — see the dynamic computation in create() below,
+   * which only falls back to this field for old-style moduleKeys.
+   */
+  protected moduleIndex: number = -1
   /** matches module_id used in analysis engine event mapping */
   protected abstract moduleKey: string
 
@@ -54,8 +65,19 @@ export abstract class BaseGameScene extends Phaser.Scene {
 
     this.addBackground()
 
-    this.progressBar = new ProgressBar(this, 60, 24, CANVAS_WIDTH - 120, 4)
-    this.progressBar.setActive(this.moduleIndex)
+    // Segment count and active index are dynamic for new-style modules
+    // (3, 4, or 5 depending on band — Stage B made this vary), and
+    // exactly the old hardcoded behavior for old-style modules (module1_gaze
+    // etc. aren't part of the new ModuleKey vocabulary, so this check
+    // correctly falls through to the untouched original behavior for them).
+    const isNewModule = (MODULE_SEQUENCE_BY_BAND.BAND_3 as readonly string[]).includes(this.moduleKey)
+    const segmentCount = isNewModule ? getModuleSequence(this.ageMonths).length : 4
+    const activeIndex = isNewModule
+      ? getModuleSequence(this.ageMonths).indexOf(this.moduleKey as ModuleKey)
+      : this.moduleIndex
+
+    this.progressBar = new ProgressBar(this, 60, 24, CANVAS_WIDTH - 120, segmentCount)
+    this.progressBar.setActive(activeIndex)
 
     this.buddy = new BuddySprite(this, CANVAS_WIDTH / 2, 470, 1)
 
