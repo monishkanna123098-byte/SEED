@@ -162,6 +162,30 @@ export interface GameCompletionPayload {
   gameModuleId: string
 }
 
+// ─── Module A: LOOK ──────────────────────────────────────────────────────
+// See docs/superpowers/specs/2026-07-18-module-a-look-design.md §3
+export interface NameCallEvent {
+  type: 'name_call'
+  trial_id: number
+  timestamp_ms: number
+  response_target: 'buddy_face' | 'buddy_body' | 'other_character' | 'none'
+  latency_ms: number | null // null when response_target is 'none' (timed out)
+  stimulus_type: 'social'
+}
+
+export interface JointAttentionEvent {
+  type: 'joint_attention'
+  trial_id: number
+  timestamp_ms: number // when the star first appeared
+  cue_onset_ms: number | null // when Buddy's gaze cue fired; null if tapped before the cue ever fired
+  tap_ms: number | null // null if no tap at all
+  initiated: boolean // true if the tap happened before cue_onset_ms (or the cue never fired)
+  correct: boolean
+  stimulus_type: 'social'
+}
+
+export type LookEvent = NameCallEvent | JointAttentionEvent
+
 export class EventCollector {
   private sessionId: string
   private ageMonths: number
@@ -174,6 +198,7 @@ export class EventCollector {
   private disengagementEvents: DisengagementEvent[] = []
   private socialCheckEvents: SocialCheckEvent[] = []
   private perseverationEvents: PerseverationEvent[] = []
+  private lookEvents: LookEvent[] = []
   private modulesCompleted: string[] = []
 
   constructor(sessionId: string, ageMonths: number) {
@@ -244,6 +269,10 @@ export class EventCollector {
    *  when a perseverative repeat is detected. See design spec §4. */
   addPerseverationEvent(event: PerseverationEvent): void {
     this.perseverationEvents.push(event)
+  }
+
+  addLookEvent(event: LookEvent): void {
+    this.lookEvents.push(event)
   }
 
   // ── Module completion tracking ──────────────────────────────────────────────
@@ -438,6 +467,33 @@ export class EventCollector {
         position: e.position,
         count: e.count,
       })
+    }
+
+    for (const e of this.lookEvents) {
+      if (e.type === 'name_call') {
+        out.push({
+          type: 'name_call',
+          module_id: 'LOOK',
+          trial_index: e.trial_id,
+          timestamp: e.timestamp_ms,
+          response_target: e.response_target,
+          latency_ms: e.latency_ms,
+          is_correct: e.response_target === 'buddy_face' || e.response_target === 'buddy_body',
+          stimulus_type: 'social',
+        })
+      } else {
+        out.push({
+          type: 'joint_attention',
+          module_id: 'LOOK',
+          trial_index: e.trial_id,
+          timestamp: e.timestamp_ms,
+          cue_onset_ms: e.cue_onset_ms,
+          latency_ms: e.tap_ms !== null ? e.tap_ms - e.timestamp_ms : null,
+          initiated: e.initiated,
+          is_correct: e.correct,
+          stimulus_type: 'social',
+        })
+      }
     }
 
     return out

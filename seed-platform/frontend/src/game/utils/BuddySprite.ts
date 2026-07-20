@@ -676,8 +676,15 @@ export class BuddySprite {
    * it for the hover-reaction requirement; several new modules (social-
    * check mechanics — Buddy becomes tappable during a confusion/pause
    * moment) will call it too.
+   *
+   * onTap receives which region was tapped ('face' vs 'body') — needed
+   * by Module A's Signal A3 (does the child preferentially tap Buddy's
+   * face). Determined by converting the pointer's world position into
+   * root-local space (Phaser's pointToContainer) and checking it against
+   * the face container's approximate hit-circle, rather than adding a
+   * second overlapping interactive object on `face` itself.
    */
-  enableInteraction(onTap?: () => void): void {
+  enableInteraction(onTap?: (region: 'face' | 'body') => void): void {
     this.body.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Circle(0, 0, BODY_RADIUS), hitAreaCallback: Phaser.Geom.Circle.Contains })
 
     this.body.on('pointerover', () => {
@@ -689,9 +696,17 @@ export class BuddySprite {
       this.isHovering = false
     })
     if (onTap) {
-      this.body.on('pointerup', () => {
+      this.body.on('pointerup', (pointer: Phaser.Input.Pointer) => {
         if (this.destroyed) return
-        onTap()
+        const local = this.root.pointToContainer({ x: pointer.x, y: pointer.y }) as { x: number; y: number }
+        // Face container sits at local (0, -6) with eyes/nose/mouth spanning
+        // roughly a 38px-radius region — generous enough to catch an
+        // intentional face-tap from a young child without being so large
+        // it swallows the whole body.
+        const dx = local.x - 0
+        const dy = local.y - -6
+        const region: 'face' | 'body' = dx * dx + dy * dy <= 38 * 38 ? 'face' : 'body'
+        onTap(region)
       })
     }
   }
