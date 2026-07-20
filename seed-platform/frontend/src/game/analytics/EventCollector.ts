@@ -186,6 +186,35 @@ export interface JointAttentionEvent {
 
 export type LookEvent = NameCallEvent | JointAttentionEvent
 
+// ─── Module C: PEEK ──────────────────────────────────────────────────────
+// See docs/superpowers/specs/2026-07-18-module-c-peek-design.md §4
+export interface PeekPlainEvent {
+  type: 'peek_plain'
+  trial_id: number
+  timestamp_ms: number
+  num_cups: number
+  num_shuffles: number
+  cup_taps: number[] // sequence of cup indices tapped, in order — length is Signal C4
+  correct: boolean
+  latency_ms: number | null
+}
+
+export interface PeekReferencingEvent {
+  type: 'peek_referencing'
+  trial_id: number
+  timestamp_ms: number
+  num_cups: number
+  num_shuffles: number
+  checked_buddy: boolean
+  check_latency_ms: number | null
+  cue_onset_ms: number
+  cup_taps: number[]
+  correct: boolean
+  response_latency_ms: number | null
+}
+
+export type PeekEvent = PeekPlainEvent | PeekReferencingEvent
+
 export class EventCollector {
   private sessionId: string
   private ageMonths: number
@@ -199,6 +228,7 @@ export class EventCollector {
   private socialCheckEvents: SocialCheckEvent[] = []
   private perseverationEvents: PerseverationEvent[] = []
   private lookEvents: LookEvent[] = []
+  private peekEvents: PeekEvent[] = []
   private modulesCompleted: string[] = []
 
   constructor(sessionId: string, ageMonths: number) {
@@ -273,6 +303,10 @@ export class EventCollector {
 
   addLookEvent(event: LookEvent): void {
     this.lookEvents.push(event)
+  }
+
+  addPeekEvent(event: PeekEvent): void {
+    this.peekEvents.push(event)
   }
 
   // ── Module completion tracking ──────────────────────────────────────────────
@@ -490,6 +524,39 @@ export class EventCollector {
           cue_onset_ms: e.cue_onset_ms,
           latency_ms: e.tap_ms !== null ? e.tap_ms - e.timestamp_ms : null,
           initiated: e.initiated,
+          is_correct: e.correct,
+          stimulus_type: 'social',
+        })
+      }
+    }
+
+    for (const e of this.peekEvents) {
+      if (e.type === 'peek_plain') {
+        out.push({
+          type: 'peek_plain',
+          module_id: 'PEEK',
+          trial_index: e.trial_id,
+          timestamp: e.timestamp_ms,
+          num_cups: e.num_cups,
+          num_shuffles: e.num_shuffles,
+          cup_taps: e.cup_taps,
+          latency_ms: e.latency_ms,
+          is_correct: e.correct,
+          stimulus_type: 'nonsocial',
+        })
+      } else {
+        out.push({
+          type: 'peek_referencing',
+          module_id: 'PEEK',
+          trial_index: e.trial_id,
+          timestamp: e.timestamp_ms,
+          num_cups: e.num_cups,
+          num_shuffles: e.num_shuffles,
+          checked_buddy: e.checked_buddy,
+          check_latency_ms: e.check_latency_ms,
+          cue_onset_ms: e.cue_onset_ms,
+          cup_taps: e.cup_taps,
+          latency_ms: e.response_latency_ms,
           is_correct: e.correct,
           stimulus_type: 'social',
         })
