@@ -231,6 +231,35 @@ export interface HelloEvent {
   stimulus_type: 'social'
 }
 
+// ─── Module D: SORT_PLUS ─────────────────────────────────────────────────
+// See docs/superpowers/specs/2026-07-18-module-d-sortplus-design.md §5
+export interface SortPlusEvent {
+  type: 'tap' | 'drag'
+  object_id: number
+  phase: 1 | 2
+  rule: 'color' | 'shape'
+  timestamp_ms: number
+  color: string
+  shape: string
+  target_bin: string
+  drop_bin: string
+  correct: boolean
+  is_perseverative_error: boolean // incorrect AND drop_bin matches what would've been correct under the PREVIOUS phase's rule — only meaningful in Phase 2
+  was_auto_resolved: boolean // true if never touched — excluded from D1/D2 scoring server-side
+  target_x: number
+  target_y: number
+  target_radius: number
+  actual_x: number
+  actual_y: number
+  tap_x: number
+  tap_y: number
+  drag_path: DragPoint[]
+  drag_path_deviation: number
+  reaction_time_ms: number
+  precision_error_px: number
+  stimulus_type: 'nonsocial'
+}
+
 export class EventCollector {
   private sessionId: string
   private ageMonths: number
@@ -246,6 +275,7 @@ export class EventCollector {
   private lookEvents: LookEvent[] = []
   private peekEvents: PeekEvent[] = []
   private helloEvents: HelloEvent[] = []
+  private sortPlusEvents: SortPlusEvent[] = []
   private modulesCompleted: string[] = []
 
   constructor(sessionId: string, ageMonths: number) {
@@ -328,6 +358,10 @@ export class EventCollector {
 
   addHelloEvent(event: HelloEvent): void {
     this.helloEvents.push(event)
+  }
+
+  addSortPlusEvent(event: SortPlusEvent): void {
+    this.sortPlusEvents.push(event)
   }
 
   // ── Module completion tracking ──────────────────────────────────────────────
@@ -598,6 +632,34 @@ export class EventCollector {
         latency_ms: e.latency_ms,
         is_correct: e.is_correct,
         stimulus_type: 'social',
+      })
+    }
+
+    for (const e of this.sortPlusEvents) {
+      out.push({
+        type: e.type,
+        module_id: 'SORT_PLUS',
+        object_id: e.object_id,
+        phase: e.phase,
+        rule: e.rule,
+        timestamp: e.timestamp_ms,
+        color: e.color,
+        shape: e.shape,
+        target_bin: e.target_bin,
+        drop_bin: e.drop_bin,
+        is_correct: e.correct,
+        is_perseverative_error: e.is_perseverative_error,
+        was_auto_resolved: e.was_auto_resolved,
+        target_x: e.target_x,
+        target_y: e.target_y,
+        target_radius: e.target_radius,
+        actual_x: e.actual_x,
+        actual_y: e.actual_y,
+        drag_path: e.drag_path,
+        drag_path_deviation: e.drag_path_deviation,
+        reaction_time_ms: e.reaction_time_ms,
+        precision_error_px: e.precision_error_px,
+        stimulus_type: 'nonsocial',
       })
     }
 
