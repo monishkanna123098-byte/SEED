@@ -215,6 +215,22 @@ export interface PeekReferencingEvent {
 
 export type PeekEvent = PeekPlainEvent | PeekReferencingEvent
 
+// ─── Module B: HELLO ─────────────────────────────────────────────────────
+// See docs/superpowers/specs/2026-07-18-module-b-hello-design.md §3
+export interface HelloEvent {
+  type: 'imitation_step'
+  trial_id: number
+  sequence_step: number
+  sequence_length: number
+  timestamp_ms: number
+  gesture_shown: string
+  is_novel_gesture: boolean
+  widget_tapped: string | null
+  is_correct: boolean
+  latency_ms: number | null
+  stimulus_type: 'social'
+}
+
 export class EventCollector {
   private sessionId: string
   private ageMonths: number
@@ -229,6 +245,7 @@ export class EventCollector {
   private perseverationEvents: PerseverationEvent[] = []
   private lookEvents: LookEvent[] = []
   private peekEvents: PeekEvent[] = []
+  private helloEvents: HelloEvent[] = []
   private modulesCompleted: string[] = []
 
   constructor(sessionId: string, ageMonths: number) {
@@ -307,6 +324,10 @@ export class EventCollector {
 
   addPeekEvent(event: PeekEvent): void {
     this.peekEvents.push(event)
+  }
+
+  addHelloEvent(event: HelloEvent): void {
+    this.helloEvents.push(event)
   }
 
   // ── Module completion tracking ──────────────────────────────────────────────
@@ -561,6 +582,23 @@ export class EventCollector {
           stimulus_type: 'social',
         })
       }
+    }
+
+    for (const e of this.helloEvents) {
+      out.push({
+        type: 'imitation_step',
+        module_id: 'HELLO',
+        trial_index: e.trial_id,
+        sequence_step: e.sequence_step,
+        sequence_length: e.sequence_length,
+        timestamp: e.timestamp_ms,
+        gesture_shown: e.gesture_shown,
+        is_novel_gesture: e.is_novel_gesture,
+        widget_tapped: e.widget_tapped,
+        latency_ms: e.latency_ms,
+        is_correct: e.is_correct,
+        stimulus_type: 'social',
+      })
     }
 
     return out
