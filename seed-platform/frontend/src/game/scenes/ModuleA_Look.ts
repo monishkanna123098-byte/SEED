@@ -26,6 +26,10 @@ const STAR_Y = 320
 export class ModuleA_Look extends BaseGameScene {
   protected moduleKey = 'LOOK'
 
+  constructor() {
+    super('ModuleA_Look')
+  }
+
   private cfg!: LookModuleConfig
   private trialSequence: TrialType[] = []
   private trialIndex = 0
@@ -262,11 +266,10 @@ export class ModuleA_Look extends BaseGameScene {
     this.soundManager.play('completion')
     this.buddy.playExcited()
 
-    // TEMPORARY: Stage E (scene wiring, not yet built) will chain this into
-    // the next module in getModuleSequence() for this band. Fading to
-    // ResultScene directly for now so this module is independently
-    // verifiable before all 5 exist and Stage E can wire them together.
-    this.time.delayedCall(1200, () => this.fadeToScene('ResultScene'))
+    // Stage E wiring complete — advances to whichever module is next
+    // in this session's actual sequence (was a TEMPORARY direct fade
+    // to ResultScene before Stage E existed).
+    this.time.delayedCall(1200, () => this.advanceToNextModule())
   }
 
   shutdown(): void {

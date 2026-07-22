@@ -12,19 +12,29 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Sparkles, PartyPopper } from 'lucide-react'
+import { Sparkles, PartyPopper } from 'lucide-react'
 import { api, extractApiError } from '@/utils/api'
 import { Disclaimer } from '@/components/Disclaimer'
 import { SEEDLogo } from '@/components/SEEDLogo'
 import { createBuddysWorldGame, destroyBuddysWorldGame } from './PhaserGame'
 import { GameCompletionPayload } from './analytics/EventCollector'
+import { MIN_AGE_MONTHS, MAX_AGE_MONTHS } from '../utils/ageConstants'
 import type Phaser from 'phaser'
 
-type Step = 'age-select' | 'instructions' | 'playing' | 'submitting' | 'waiting' | 'done' | 'error'
+type Step = 'instructions' | 'playing' | 'submitting' | 'waiting' | 'done' | 'error' | 'age-invalid'
 
 interface BuddysWorldProps {
   /** Existing ScreeningSession id (created via POST /api/screening/start). */
   sessionId: string
+  /** The child's actual age in months, computed by the caller from their
+   *  registered date of birth (Step4b_Game.tsx uses calculateAge()) —
+   *  this replaced a stale internal 2-option age picker ("3-4 years" /
+   *  "4-5 years") that had no route to the 18-30 month band at all,
+   *  making that band unreachable through this UI regardless of
+   *  anything AgeAdapter/EventCollector/the modules themselves support.
+   *  null means the caller couldn't determine it (e.g. child not found)
+   *  — shown as an error state rather than silently guessing an age. */
+  ageMonths: number | null
   /** Called once the game-complete POST has been accepted and either
    *  results are ready or polling has reached its bound. The parent
    *  page owns subsequent navigation / further waiting UI. */
@@ -33,32 +43,21 @@ interface BuddysWorldProps {
   onCancel?: () => void
 }
 
-const AGE_OPTIONS: Array<{ label: string; sublabel: string; ageMonths: number }> = [
-  { label: '3–4 years', sublabel: 'Younger group', ageMonths: 42 },
-  { label: '4–5 years', sublabel: 'Older group', ageMonths: 54 },
-]
-
 const MAX_POLL_ATTEMPTS = 15
 const POLL_INTERVAL_MS = 2000
 
-export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, onFinished, onCancel }) => {
-  const [step, setStep] = useState<Step>('age-select')
-  const [ageMonths, setAgeMonths] = useState<number | null>(null)
+export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, ageMonths, onFinished, onCancel }) => {
+  const ageIsValid = ageMonths !== null && ageMonths >= MIN_AGE_MONTHS && ageMonths <= MAX_AGE_MONTHS
+  const [step, setStep] = useState<Step>(ageIsValid ? 'instructions' : 'age-invalid')
   const [error, setError] = useState<string | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<Phaser.Game | null>(null)
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ── Step 1: age selection ───────────────────────────────────────────────────
-  function selectAge(months: number) {
-    setAgeMonths(months)
-    setStep('instructions')
-  }
-
-  // ── Step 2 → 3: instructions → fullscreen + Phaser mount ────────────────────
+  // ── instructions → fullscreen + Phaser mount ────────────────────────────────
   const beginGame = useCallback(async () => {
-    if (ageMonths === null) return
+    if (!ageIsValid) return
 
     try {
       await containerRef.current?.requestFullscreen?.()
@@ -67,7 +66,7 @@ export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, onFinished,
     }
 
     setStep('playing')
-  }, [ageMonths])
+  }, [ageIsValid])
 
   // Mount Phaser once we enter 'playing' and the container is in the DOM
   useEffect(() => {
@@ -202,40 +201,29 @@ export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, onFinished,
           </div>
 
           <AnimatePresence mode="wait">
-            {step === 'age-select' && (
+            {step === 'age-invalid' && (
               <motion.div
-                key="age-select"
+                key="age-invalid"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="seed-card"
+                className="seed-card text-center"
               >
-                <h1 className="text-xl font-bold text-seed-dark text-center mb-1">
-                  Buddy's World
-                </h1>
-                <p className="text-seed-muted text-sm text-center mb-6">
-                  How old is your child?
-                </p>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {AGE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.ageMonths}
-                      onClick={() => selectAge(opt.ageMonths)}
-                      className="flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-seed-muted/20
-                                 hover:border-seed-teal hover:bg-seed-teal/5 transition-all duration-200
-                                 focus-visible:ring-2 focus-visible:ring-seed-teal focus-visible:ring-offset-2"
-                    >
-                      <Users className="text-seed-teal" size={36} />
-                      <span className="font-bold text-seed-dark">{opt.label}</span>
-                      <span className="text-xs text-seed-muted">{opt.sublabel}</span>
-                    </button>
-                  ))}
+                <div className="w-14 h-14 bg-seed-alert/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-7 h-7 text-seed-alert" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
                 </div>
-
+                <h2 className="text-lg font-bold text-seed-dark mb-2">Age not supported</h2>
+                <p className="text-seed-muted text-sm mb-5">
+                  Buddy's World is designed for children aged 18 months to 5 years.
+                  {ageMonths === null
+                    ? " We couldn't determine this child's age — please check their profile."
+                    : ' This child falls outside that range for this activity.'}
+                </p>
                 {onCancel && (
-                  <button onClick={onCancel} className="seed-btn-secondary w-full mt-5">
-                    Not now
+                  <button onClick={onCancel} className="seed-btn-secondary w-full">
+                    Go back
                   </button>
                 )}
               </motion.div>
@@ -282,12 +270,11 @@ export const BuddysWorld: React.FC<BuddysWorldProps> = ({ sessionId, onFinished,
                 <button onClick={beginGame} className="seed-btn-primary w-full">
                   Let's begin
                 </button>
-                <button
-                  onClick={() => setStep('age-select')}
-                  className="seed-btn-secondary w-full mt-3"
-                >
-                  Back
-                </button>
+                {onCancel && (
+                  <button onClick={onCancel} className="seed-btn-secondary w-full mt-3">
+                    Back
+                  </button>
+                )}
               </motion.div>
             )}
 

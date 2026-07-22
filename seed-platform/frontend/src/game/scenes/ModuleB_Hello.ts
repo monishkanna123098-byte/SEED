@@ -35,6 +35,10 @@ const WIDGET_SHAPE: Record<GestureType, { shape: 'circle' | 'square' | 'triangle
 export class ModuleB_Hello extends BaseGameScene {
   protected moduleKey = 'HELLO'
 
+  constructor() {
+    super('ModuleB_Hello')
+  }
+
   private cfg!: HelloModuleConfig
   private trialIndex = 0
   private currentTrialId = 0
@@ -217,8 +221,8 @@ export class ModuleB_Hello extends BaseGameScene {
     this.playCompletionBurst()
     this.soundManager.play('completion')
     this.buddy.playExcited()
-    // TEMPORARY — see ModuleA_Look's completeModule() comment.
-    this.time.delayedCall(1200, () => this.fadeToScene('ResultScene'))
+    // Stage E wiring complete — see ModuleA_Look's completeModule() comment.
+    this.time.delayedCall(1200, () => this.advanceToNextModule())
   }
 
   shutdown(): void {

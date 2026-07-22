@@ -21,10 +21,17 @@ import { ProgressBar } from '../utils/ProgressBar'
 import { SoundManager } from '../utils/SoundManager'
 import { AgeAdapter, getModuleSequence, MODULE_SEQUENCE_BY_BAND } from '../utils/AgeAdapter'
 import type { ModuleKey } from '../utils/AgeAdapter'
+import { nextSceneKey } from '../utils/moduleNavigation'
 import { EventCollector } from '../analytics/EventCollector'
 
 export const CANVAS_WIDTH = 800
 export const CANVAS_HEIGHT = 600
+
+/**
+ * ModuleKey-to-SceneKey mapping and the next-scene computation live in
+ * utils/moduleNavigation.ts (kept Phaser-free there so it's directly
+ * testable) — this file just calls it, not a second copy of it.
+ */
 
 export abstract class BaseGameScene extends Phaser.Scene {
   protected buddy!: BuddySprite
@@ -154,6 +161,17 @@ export abstract class BaseGameScene extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start(key)
     })
+  }
+
+  /**
+   * Advances to whichever module comes next in THIS session's actual
+   * sequence — delegates to the extracted, tested nextSceneKey()
+   * (utils/moduleNavigation.ts) rather than duplicating that logic
+   * here. Old Module 1-4 scenes don't call this — they still use
+   * their own hardcoded fadeToScene(...) chains, unchanged.
+   */
+  protected advanceToNextModule(): void {
+    this.fadeToScene(nextSceneKey(this.moduleKey, this.ageMonths))
   }
 
   // ── Completion celebration ──────────────────────────────────────────────────

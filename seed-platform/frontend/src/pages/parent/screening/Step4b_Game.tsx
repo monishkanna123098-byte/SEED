@@ -10,6 +10,7 @@
 
 import { useState } from 'react'
 import { useParentStore } from '@/stores/parentStore'
+import { calculateAge } from '@/utils/age'
 import { BuddysWorld } from '@/game/BuddysWorld'
 import { WizardState } from './NewScreeningPage'
 
@@ -31,9 +32,19 @@ export function Step4b_Game({ state, onNext }: Step4bProps) {
 
   // If game is running, BuddysWorld takes full control (requests fullscreen)
   if (gameStarted) {
+    // Compute the child's actual age here rather than letting BuddysWorld
+    // ask the parent to re-select a coarse bucket — this card's own copy
+    // below already claims "the game will adapt to {child.name}'s age
+    // group automatically," which wasn't previously true (BuddysWorld had
+    // its own separate, stale 2-option age picker with no route to the
+    // 18-30 month band at all). Using the real registered age instead
+    // makes that claim actually true, and restores access to the band
+    // this whole engine rebuild exists to properly support.
+    const ageMonths = child ? calculateAge(child.dateOfBirth).totalMonths : null
     return (
       <BuddysWorld
         sessionId={state.sessionId ?? `demo-${Date.now()}`}
+        ageMonths={ageMonths}
         onFinished={handleGameFinished}
         onCancel={() => setGameStarted(false)}
       />

@@ -28,6 +28,10 @@ const CIRCLE_RADIUS = 68
 export class ModuleE_FollowPlus extends BaseGameScene {
   protected moduleKey = 'FOLLOW_PLUS'
 
+  constructor() {
+    super('ModuleE_FollowPlus')
+  }
+
   private cfg!: FollowPlusModuleConfig
   private trialIndex = 0
   private modifiedFlags: boolean[] = []
@@ -310,7 +314,12 @@ export class ModuleE_FollowPlus extends BaseGameScene {
     this.soundManager.play('completion')
     this.playCompletionBurst(CANVAS_WIDTH / 2, 300)
     this.buddy.playCheer(() => {
-      this.time.delayedCall(600, () => this.fadeToScene('ResultScene'))
+      // Uses the same generic advanceToNextModule() as every other module,
+      // even though FOLLOW_PLUS is currently always last in BAND_3's
+      // sequence (resolves to ResultScene either way) - avoids a special-
+      // cased exception here that could silently break if a 6th module
+      // is ever added after this one.
+      this.time.delayedCall(600, () => this.advanceToNextModule())
     })
   }
 }

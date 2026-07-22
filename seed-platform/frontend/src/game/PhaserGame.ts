@@ -14,6 +14,11 @@ import { Module1_Gaze } from './scenes/Module1_Gaze'
 import { Module2_Imitate } from './scenes/Module2_Imitate'
 import { Module3_Sort } from './scenes/Module3_Sort'
 import { Module4_Follow } from './scenes/Module4_Follow'
+import { ModuleA_Look } from './scenes/ModuleA_Look'
+import { ModuleB_Hello } from './scenes/ModuleB_Hello'
+import { ModuleC_Peek } from './scenes/ModuleC_Peek'
+import { ModuleD_SortPlus } from './scenes/ModuleD_SortPlus'
+import { ModuleE_FollowPlus } from './scenes/ModuleE_FollowPlus'
 import { ResultScene } from './scenes/ResultScene'
 import { EventCollector, GameCompletionPayload } from './analytics/EventCollector'
 import { AgeAdapter } from './utils/AgeAdapter'
@@ -45,6 +50,19 @@ export function createBuddysWorldGame(config: BuddysWorldConfig): Phaser.Game {
     scene: [
       LoadScene,
       MenuScene,
+      // New modules — the actual play sequence now, wired via
+      // MenuScene's play button (always starts at ModuleA_Look) and
+      // each module's advanceToNextModule() (BaseGameScene.ts), which
+      // reads getModuleSequence(ageMonths) rather than a hardcoded chain.
+      ModuleA_Look,
+      ModuleB_Hello,
+      ModuleC_Peek,
+      ModuleD_SortPlus,
+      ModuleE_FollowPlus,
+      // Old modules — registered but no longer reachable through normal
+      // play. Not deleted: physical removal is deferred to whichever
+      // future cleanup explicitly retires them, same principle as
+      // AgeAdapter's old class and EventCollector's old event types.
       Module1_Gaze,
       Module2_Imitate,
       Module3_Sort,

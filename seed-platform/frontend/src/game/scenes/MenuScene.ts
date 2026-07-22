@@ -99,7 +99,11 @@ export class MenuScene extends Phaser.Scene {
 
       this.cameras.main.fadeOut(350, 224, 244, 255)
       this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.scene.start('Module1_Gaze')
+        // LOOK is always first in every band's sequence
+        // (MODULE_SEQUENCE_BY_BAND) - safe to hardcode here, unlike the
+        // later transitions which vary by band and use
+        // advanceToNextModule() instead.
+        this.scene.start('ModuleA_Look')
       })
     })
 

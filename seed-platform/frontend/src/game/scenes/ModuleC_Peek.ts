@@ -31,6 +31,10 @@ interface Cup {
 export class ModuleC_Peek extends BaseGameScene {
   protected moduleKey = 'PEEK'
 
+  constructor() {
+    super('ModuleC_Peek')
+  }
+
   private cfg!: PeekModuleConfig
   private trialSequence: PeekTrialType[] = []
   private trialIndex = 0
@@ -341,9 +345,8 @@ export class ModuleC_Peek extends BaseGameScene {
     this.playCompletionBurst()
     this.soundManager.play('completion')
     this.buddy.playExcited()
-    // TEMPORARY, same as ModuleA_Look — see that file's completeModule()
-    // comment. Stage E will chain modules together once all 5 exist.
-    this.time.delayedCall(1200, () => this.fadeToScene('ResultScene'))
+    // Stage E wiring complete — see ModuleA_Look's completeModule() comment.
+    this.time.delayedCall(1200, () => this.advanceToNextModule())
   }
 
   shutdown(): void {

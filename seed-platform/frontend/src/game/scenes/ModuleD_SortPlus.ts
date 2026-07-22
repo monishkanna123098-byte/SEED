@@ -37,6 +37,10 @@ interface BinSlot {
 export class ModuleD_SortPlus extends BaseGameScene {
   protected moduleKey = 'SORT_PLUS'
 
+  constructor() {
+    super('ModuleD_SortPlus')
+  }
+
   private cfg!: SortPlusModuleConfig
   private phase: 1 | 2 = 1
   private objectIndexInPhase = 0
@@ -379,8 +383,8 @@ export class ModuleD_SortPlus extends BaseGameScene {
     this.soundManager.play('completion')
     this.playCompletionBurst(CANVAS_WIDTH / 2, 280)
     this.buddy.playCheer()
-    // TEMPORARY — see ModuleA_Look's completeModule() comment.
-    this.time.delayedCall(1200, () => this.fadeToScene('ResultScene'))
+    // Stage E wiring complete — see ModuleA_Look's completeModule() comment.
+    this.time.delayedCall(1200, () => this.advanceToNextModule())
   }
 
   shutdown(): void {
