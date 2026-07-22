@@ -20,6 +20,8 @@ import { prisma } from '../utils/prisma'
 import { authenticateToken, requireRole } from '../middleware/auth.middleware'
 import { validate } from '../middleware/validate.middleware'
 import { logger } from '../utils/logger'
+import { MIN_AGE_MONTHS } from '../utils/ageConstants'
+import { isAtLeastMinimumAge } from '../utils/childAge'
 
 const router = Router()
 
@@ -76,11 +78,19 @@ router.post(
           throw new Error('dateOfBirth must be in the past')
         }
         // Must be within screening age range — child must be born within last 8 years
-        // (18 months minimum is enforced by the wizard, not the API)
+        // (this is a deliberately loose sanity bound, not the strict 5-year product
+        // ceiling — that's enforced client-side in AddChildPage.tsx)
         const eightYearsAgo = new Date()
         eightYearsAgo.setFullYear(eightYearsAgo.getFullYear() - 8)
         if (dob < eightYearsAgo) {
           throw new Error('Child appears to be outside the supported age range (up to 8 years)')
+        }
+        // Floor check — previously absent server-side entirely (this comment used to
+        // say "18 months minimum is enforced by the wizard, not the API", which was
+        // a real gap: nothing stopped a direct API call from registering a below-floor
+        // child). See docs/superpowers/specs/2026-07-18-age-floor-ceiling-consistency-design.md
+        if (!isAtLeastMinimumAge(dob, MIN_AGE_MONTHS, now)) {
+          throw new Error(`Child must be at least ${MIN_AGE_MONTHS} months old`)
         }
         return true
       }),

@@ -34,6 +34,7 @@ from services.landmark_extractor import LandmarkExtractor, ExtractedSignals
 from services.feature_engineer import FeatureEngineer, FeatureVector
 from services.scorer import Scorer
 from services.fusion_engine import FusionEngine
+from constants import MIN_AGE_MONTHS, MAX_AGE_MONTHS
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -80,7 +81,7 @@ class GameEvent(BaseModel):
 
 class GameAnalysisRequest(BaseModel):
     session_id: str
-    child_age_months: int = Field(ge=24, le=60)
+    child_age_months: int = Field(ge=MIN_AGE_MONTHS, le=MAX_AGE_MONTHS)
     game_events: List[GameEvent]
     mchat_score: Optional[float] = Field(default=None, ge=0.0, le=20.0)
 
@@ -118,7 +119,7 @@ class GameMetricsPayload(BaseModel):
 
 class FusionRequest(BaseModel):
     session_id: str
-    child_age_months: int = Field(ge=24, le=60)
+    child_age_months: int = Field(ge=MIN_AGE_MONTHS, le=MAX_AGE_MONTHS)
     mchat_score: Optional[float] = Field(default=None, ge=0.0, le=20.0)
     video_metrics: Optional[VideoMetricsPayload] = None
     game_metrics: Optional[GameMetricsPayload] = None
@@ -223,7 +224,7 @@ def get_normative_data(age_group: str) -> Dict[str, Any]:
 async def analyze_video(
     background_tasks: BackgroundTasks,
     session_id: str = Form(...),
-    child_age_months: int = Form(..., ge=24, le=60),
+    child_age_months: int = Form(..., ge=MIN_AGE_MONTHS, le=MAX_AGE_MONTHS),
     mchat_score: Optional[float] = Form(default=None),
     video: UploadFile = File(...),
 ) -> Dict[str, Any]:

@@ -3,7 +3,7 @@
  *
  * Collects first name, date of birth, and gender.
  * Live age calculation updates as the user picks a DOB.
- * Validation gate: child must be 18 months – 6 years old.
+ * Validation gate: child must be 18 months – 5 years old.
  * On success: POST /api/children → update store → redirect to dashboard.
  * Demo / API-unavailable fallback: creates a local mock child so the form
  * works end-to-end even without a backend.
@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sprout, Baby, Check, AlertTriangle } from 'lucide-react'
 import { useParentStore } from '@/stores/parentStore'
 import { calculateAge } from '@/utils/age'
+import { MIN_AGE_MONTHS, MAX_AGE_MONTHS } from '@/utils/ageConstants'
 import { api, extractApiError } from '@/utils/api'
 import { Disclaimer } from '@/components/Disclaimer'
 import { Child } from '@/types'
@@ -27,31 +28,32 @@ function isoDate(d: Date): string {
 
 const TODAY = isoDate(new Date())
 
-/** Oldest allowed DOB: 7 years ago (picker cap; real validation is 18 mo – 6 yr) */
+/** Oldest allowed DOB: 6 years ago (picker cap; real validation is 18mo–5yr,
+ *  see utils/ageConstants.ts). Was previously 7 years / 72 months here — that
+ *  disagreed with the Privacy Policy, the landing page, and Step3_Modality's
+ *  own copy, all of which state 5 years. Fixed to match; see
+ *  docs/superpowers/specs/2026-07-18-age-floor-ceiling-consistency-design.md */
 function minPickerDate(): string {
   const d = new Date()
-  d.setFullYear(d.getFullYear() - 7)
+  d.setFullYear(d.getFullYear() - 6)
   return isoDate(d)
 }
 
 // ─── Age validation ───────────────────────────────────────────────────────────
 
-const MIN_MONTHS = 18
-const MAX_MONTHS = 72 // 6 years
-
-interface AgeValidation {
+export interface AgeValidation {
   totalMonths: number
   display: string
   inRange: boolean
 }
 
-function validateDob(dob: string): AgeValidation | null {
+export function validateDob(dob: string): AgeValidation | null {
   if (!dob) return null
   const age = calculateAge(dob)
   return {
     totalMonths: age.totalMonths,
     display: age.display,
-    inRange: age.totalMonths >= MIN_MONTHS && age.totalMonths <= MAX_MONTHS,
+    inRange: age.totalMonths >= MIN_AGE_MONTHS && age.totalMonths <= MAX_AGE_MONTHS,
   }
 }
 
@@ -220,7 +222,7 @@ export function AddChildPage() {
                             Age: <strong>{ageValidation.display}</strong>
                           </>
                         ) : (
-                          'S.E.E.D. is designed for children aged 18 months to 6 years'
+                          'S.E.E.D. is designed for children aged 18 months to 5 years'
                         )}
                       </span>
                     </motion.div>

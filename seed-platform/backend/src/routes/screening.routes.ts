@@ -27,6 +27,7 @@ import { prisma } from '../utils/prisma'
 import { authenticateToken, requireRole } from '../middleware/auth.middleware'
 import { validate } from '../middleware/validate.middleware'
 import { logger } from '../utils/logger'
+import { MIN_AGE_MONTHS, MAX_AGE_MONTHS } from '../utils/ageConstants'
 import {
   uploadVideoAndQueue,
   processGameData,
@@ -214,16 +215,18 @@ router.post(
 )
 
 // ─── POST /api/screening/upload-video ─────────────────────────────────────────
+export const uploadVideoValidators = [
+  body('sessionId').isUUID().withMessage('Valid session ID required'),
+  body('childAgeMonths')
+    .isInt({ min: MIN_AGE_MONTHS, max: MAX_AGE_MONTHS })
+    .withMessage(`childAgeMonths must be an integer between ${MIN_AGE_MONTHS} and ${MAX_AGE_MONTHS}`),
+]
+
 router.post(
   '/upload-video',
   videoUpload.single('video'),
   // express-validator for body fields (multer populates req.body from multipart)
-  validate([
-    body('sessionId').isUUID().withMessage('Valid session ID required'),
-    body('childAgeMonths')
-      .isInt({ min: 24, max: 60 })
-      .withMessage('childAgeMonths must be an integer between 24 and 60'),
-  ]),
+  validate(uploadVideoValidators),
   async (req: Request, res: Response): Promise<void> => {
     if (!req.file) {
       res.status(400).json({ error: 'No video file provided' })
@@ -298,21 +301,23 @@ router.post(
 )
 
 // ─── POST /api/screening/game-complete ────────────────────────────────────────
+export const gameCompleteValidators = [
+  body('sessionId').isUUID().withMessage('Valid session ID required'),
+  body('gameModuleId').notEmpty().withMessage('gameModuleId required'),
+  body('events').isArray({ min: 1 }).withMessage('events array required'),
+  body('childAgeMonths').isInt({ min: MIN_AGE_MONTHS, max: MAX_AGE_MONTHS }).withMessage(`Age ${MIN_AGE_MONTHS}-${MAX_AGE_MONTHS} months required`),
+  body('ageGroup').notEmpty().withMessage('ageGroup required'),
+  body('completionRate').isFloat({ min: 0, max: 1 }).withMessage('completionRate 0-1'),
+  body('touchPrecisionScore').isFloat({ min: 0, max: 1 }),
+  body('reactionLatencyMean').isFloat({ min: 0 }),
+  body('imitationAccuracy').isFloat({ min: 0, max: 1 }),
+  body('rigidityScore').isFloat({ min: 0, max: 1 }),
+  body('disengagementCount').isInt({ min: 0 }),
+]
+
 router.post(
   '/game-complete',
-  validate([
-    body('sessionId').isUUID().withMessage('Valid session ID required'),
-    body('gameModuleId').notEmpty().withMessage('gameModuleId required'),
-    body('events').isArray({ min: 1 }).withMessage('events array required'),
-    body('childAgeMonths').isInt({ min: 24, max: 60 }).withMessage('Age 24-60 months required'),
-    body('ageGroup').notEmpty().withMessage('ageGroup required'),
-    body('completionRate').isFloat({ min: 0, max: 1 }).withMessage('completionRate 0-1'),
-    body('touchPrecisionScore').isFloat({ min: 0, max: 1 }),
-    body('reactionLatencyMean').isFloat({ min: 0 }),
-    body('imitationAccuracy').isFloat({ min: 0, max: 1 }),
-    body('rigidityScore').isFloat({ min: 0, max: 1 }),
-    body('disengagementCount').isInt({ min: 0 }),
-  ]),
+  validate(gameCompleteValidators),
   async (req: Request, res: Response): Promise<void> => {
     const {
       sessionId,
