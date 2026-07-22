@@ -260,6 +260,31 @@ export interface SortPlusEvent {
   stimulus_type: 'nonsocial'
 }
 
+// ─── Module E: FOLLOW_PLUS ────────────────────────────────────────────────
+// See docs/superpowers/specs/2026-07-18-module-e-followplus-design.md §4
+// DEVIATION FROM SPEC: tapped_position and latency_ms are typed
+// `number | null` here, not plain `number` as the spec's sketch showed —
+// a timeout with fewer taps than sequence steps leaves some steps with
+// no tap at all, and every other module in this rebuild uses `| null`
+// for exactly this "didn't happen" case (NameCallEvent.latency_ms,
+// JointAttentionEvent.tap_ms, PeekPlainEvent.latency_ms, etc.). The
+// spec's sketch didn't fully account for this case; fixing it here
+// rather than carrying the inconsistency forward.
+export interface FollowPlusStepEvent {
+  type: 'follow_step'
+  trial_id: number
+  sequence_step: number
+  sequence_length: number
+  timestamp_ms: number
+  latency_ms: number | null
+  tapped_position: number | null
+  expected_position: number
+  is_correct: boolean
+  is_modified_step: boolean
+  was_modified_trial: boolean
+  stimulus_type: 'nonsocial'
+}
+
 export class EventCollector {
   private sessionId: string
   private ageMonths: number
@@ -276,6 +301,7 @@ export class EventCollector {
   private peekEvents: PeekEvent[] = []
   private helloEvents: HelloEvent[] = []
   private sortPlusEvents: SortPlusEvent[] = []
+  private followPlusEvents: FollowPlusStepEvent[] = []
   private modulesCompleted: string[] = []
 
   constructor(sessionId: string, ageMonths: number) {
@@ -362,6 +388,10 @@ export class EventCollector {
 
   addSortPlusEvent(event: SortPlusEvent): void {
     this.sortPlusEvents.push(event)
+  }
+
+  addFollowPlusStepEvent(event: FollowPlusStepEvent): void {
+    this.followPlusEvents.push(event)
   }
 
   // ── Module completion tracking ──────────────────────────────────────────────
@@ -659,6 +689,24 @@ export class EventCollector {
         drag_path_deviation: e.drag_path_deviation,
         reaction_time_ms: e.reaction_time_ms,
         precision_error_px: e.precision_error_px,
+        stimulus_type: 'nonsocial',
+      })
+    }
+
+    for (const e of this.followPlusEvents) {
+      out.push({
+        type: 'follow_step',
+        module_id: 'FOLLOW_PLUS',
+        trial_index: e.trial_id,
+        sequence_step: e.sequence_step,
+        sequence_length: e.sequence_length,
+        timestamp: e.timestamp_ms,
+        latency_ms: e.latency_ms,
+        tapped_position: e.tapped_position,
+        expected_position: e.expected_position,
+        is_correct: e.is_correct,
+        is_modified_step: e.is_modified_step,
+        was_modified_trial: e.was_modified_trial,
         stimulus_type: 'nonsocial',
       })
     }

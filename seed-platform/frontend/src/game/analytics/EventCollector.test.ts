@@ -95,6 +95,35 @@ describe('getAgeGroup (via buildCompletionPayload)', () => {
   })
 })
 
+describe('addFollowPlusStepEvent', () => {
+  it('reaches the mapped events output — catches the orphaned-method class of bug directly (found and fixed during Module E implementation)', () => {
+    const collector = new EventCollector('session-1', 50)
+    collector.addFollowPlusStepEvent({
+      type: 'follow_step',
+      trial_id: 3,
+      sequence_step: 2,
+      sequence_length: 4,
+      timestamp_ms: 5000,
+      latency_ms: 600,
+      tapped_position: 1,
+      expected_position: 1,
+      is_correct: true,
+      is_modified_step: false,
+      was_modified_trial: true,
+      stimulus_type: 'nonsocial',
+    })
+    const payload = collector.buildCompletionPayload()
+    const mapped = payload.events.find((e) => e.type === 'follow_step')
+    expect(mapped).toMatchObject({
+      module_id: 'FOLLOW_PLUS',
+      trial_index: 3,
+      sequence_step: 2,
+      is_correct: true,
+      was_modified_trial: true,
+    })
+  })
+})
+
 describe('buildCompletionPayload — totalModules fix', () => {
   it('Band 1 (3 modules) reaches completionRate 1.0 after 3 completions, not 0.75', () => {
     const collector = new EventCollector('session-1', 22) // Band 1: LOOK, HELLO, PEEK
