@@ -1,4 +1,4 @@
-# S.E.E.D. — Social Emotional Early Detection
+# S.E.E.D. — Social Emotional Early Detection.
 
 > **Screening tool only. Not a medical diagnosis. Clinical confirmation required.**
 
